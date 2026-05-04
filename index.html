@@ -1166,6 +1166,20 @@ if (lsGet('cp_banner_dismissed', false)) document.getElementById('setup-banner')
 
 renderAll();
 
+// Auto-setup from URL hash: #setup:owner:repo:token
+(function() {
+  var hash = window.location.hash;
+  if (hash && hash.indexOf('#setup:') === 0) {
+    var parts = hash.slice(7).split(':');
+    if (parts.length >= 3) {
+      var cfg = { owner: parts[0], repo: parts[1], token: parts.slice(2).join(':'), interval: 60 };
+      lsSet('cp_gh', cfg);
+    }
+    // Clear the hash so the token doesn't stay in the URL
+    try { history.replaceState(null, '', window.location.pathname); } catch(e) {}
+  }
+}());
+
 // Auto-connect GitHub if config exists
 var savedGh = lsGet('cp_gh', null);
 if (savedGh && savedGh.owner && savedGh.token) {
