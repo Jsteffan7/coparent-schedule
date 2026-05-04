@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Co-Parenting Schedule</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  background: #f0f4f8; color: #2d3748;
+  -webkit-text-size-adjust: 100%;
+}
+body.dark { background: #0f1623; color: #e8edf5; }
+
+/* ── HEADER ── */
+header {
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color:#fff; padding:16px 16px 14px; text-align:center;
+}
+header h1 { font-size:1.35rem; font-weight:800; }
+header p  { font-size:0.78rem; opacity:0.88; margin-top:4px; }
+#sync-badge {
+  display:inline-block; margin-top:7px; padding:4px 14px;
+  border-radius:20px; font-size:0.72rem; font-weight:700;
+  cursor:pointer; background:rgba(255,255,255,0.2);
+}
+#sync-badge.synced  { background:rgba(72,187,120,0.4); }
+#sync-badge.saving  { background:rgba(246,173,85,0.4); }
+#sync-badge.offline { background:rgba(252,129,129,0.35); }
+#sync-badge.nosetup { background:rgba(255,255,255,0.2); }
+
+/* ── BANNERS ── */
+#flip-banner {
+  display:none; background:#f6ad55; color:#744210;
+  text-align:center; font-weight:700; font-size:0.82rem; padding:8px 12px;
+}
+#flip-banner.on { display:block; }
+#setup-banner {
+  background:#ebf8ff; border-bottom:2px solid #63b3ed;
+  padding:10px 14px; font-size:0.8rem; color:#1a365d; font-weight:600;
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:space-between; justify-content:space-between;
+  gap:8px; -webkit-flex-wrap:wrap; flex-wrap:wrap;
+}
+body.dark #setup-banner { background:#0d1e33; border-color:#2b6cb0; color:#90cdf4; }
+#setup-banner.hidden { display:none; }
+
+/* ── CONTROLS ── */
+#ctrl-bar {
+  background:#fff; border-bottom:1px solid #e2e8f0;
+  position:-webkit-sticky; position:sticky; top:0; z-index:200;
+  box-shadow:0 2px 6px rgba(0,0,0,0.07);
+}
+body.dark #ctrl-bar { background:#1a2035; border-color:#2a3550; }
+#ctrl-top {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:space-between; justify-content:space-between;
+  padding:9px 12px; gap:8px;
+}
+.legend {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  gap:10px; -webkit-flex-wrap:wrap; flex-wrap:wrap;
+}
+.leg-item {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  gap:5px; font-size:0.8rem; font-weight:600;
+}
+.leg-dot { width:13px; height:13px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.d-sarah   { background:#f687b3; }
+.d-jeremy  { background:#63b3ed; }
+.d-changed { background:#fbd38d; border:2px solid #f6ad55; }
+.d-holiday { background:#f6ad55; }
+#btn-options {
+  background:#f7fafc; border:2px solid #e2e8f0; border-radius:8px;
+  padding:7px 11px; font-size:0.78rem; font-weight:700; color:#4a5568;
+  cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent;
+}
+body.dark #btn-options { background:#243050; border-color:#2a3550; color:#8898b8; }
+#ctrl-panel { border-top:1px solid #e2e8f0; padding:10px 12px; display:none; }
+body.dark #ctrl-panel { border-color:#2a3550; }
+#ctrl-panel.open { display:block; }
+.ctrl-row {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:center; justify-content:center;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap;
+  gap:8px; margin-bottom:8px;
+}
+.ctrl-row:last-child { margin-bottom:0; }
+
+input[type="date"], select {
+  padding:9px 10px; border:2px solid #e2e8f0; border-radius:8px;
+  font-size:0.85rem; background:#fff; color:#2d3748;
+  font-family:inherit; outline:none; -webkit-appearance:none; appearance:none;
+}
+body.dark input[type="date"],
+body.dark select { background:#243050; border-color:#2a3550; color:#e8edf5; }
+input[type="date"]:focus, select:focus { border-color:#667eea; }
+#search-date { width:150px; }
+
+/* Toggle */
+.tog-wrap {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  gap:6px; font-size:0.82rem; font-weight:700;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.tog-track {
+  width:44px; height:24px; border-radius:12px; background:#cbd5e0;
+  position:relative; cursor:pointer; flex-shrink:0;
+  -webkit-transition:background 0.25s; transition:background 0.25s;
+}
+.tog-track::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:18px; height:18px; border-radius:50%;
+  background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  -webkit-transition:-webkit-transform 0.25s; transition:transform 0.25s;
+}
+.tog-on  .tog-track { background:#667eea; }
+.tog-on  .tog-track::after { -webkit-transform:translateX(20px); transform:translateX(20px); }
+.tog-flip-on .tog-track { background:#ed8936; }
+.tog-flip-on .tog-track::after { -webkit-transform:translateX(20px); transform:translateX(20px); }
+
+.btn {
+  padding:9px 14px; border:none; border-radius:8px;
+  font-size:0.85rem; font-weight:700; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:active { opacity:0.75; }
+.btn-blue { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+.btn-gray { background:#edf2f7; color:#4a5568; border:1px solid #e2e8f0; }
+body.dark .btn-gray { background:#243050; color:#8898b8; border-color:#2a3550; }
+.btn-green { background:#48bb78; color:#fff; }
+
+#search-result {
+  display:none; width:100%; padding:9px 12px; border-radius:8px;
+  font-weight:700; font-size:0.85rem; text-align:center; border:2px solid;
+}
+.res-sarah  { background:#fff0f6; color:#b5367a; border-color:#f687b3; }
+.res-jeremy { background:#ebf8ff; color:#2b6cb0; border-color:#63b3ed; }
+.res-none   { background:#f7fafc; color:#718096; border-color:#e2e8f0; }
+body.dark .res-sarah  { background:#2a0f1e; color:#f687b3; }
+body.dark .res-jeremy { background:#0d1e33; color:#63b3ed; }
+
+/* ── CALENDAR ── */
+.year-lbl {
+  text-align:center; font-size:1.2rem; font-weight:800;
+  color:#4a5568; padding:22px 12px 6px; letter-spacing:1px;
+}
+body.dark .year-lbl { color:#8898b8; }
+.cal-wrap { padding:6px 8px 8px; max-width:1440px; margin:0 auto; }
+
+.mo-card {
+  background:#fff; border-radius:14px; overflow:hidden;
+  margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,0.09);
+}
+body.dark .mo-card { background:#1a2035; }
+.mo-hdr {
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:#fff; padding:13px 16px; font-size:1rem; font-weight:800; text-align:center;
+}
+.mo-stats {
+  display:-webkit-flex; display:flex;
+  -webkit-justify-content:space-around; justify-content:space-around;
+  padding:7px 12px; font-size:0.78rem; font-weight:700;
+  background:#f8f9ff; border-bottom:1px solid #e8eaf6;
+}
+body.dark .mo-stats { background:#141d2e; border-color:#2a3550; }
+.st-s { color:#b5367a; }
+.st-j { color:#2b6cb0; }
+body.dark .st-s { color:#f687b3; }
+body.dark .st-j { color:#63b3ed; }
+.dow-row { display:-webkit-flex; display:flex; padding:6px 8px 2px; }
+.dow-hdr {
+  width:calc(100% / 7); text-align:center;
+  font-size:0.7rem; font-weight:700; color:#718096; text-transform:uppercase;
+}
+body.dark .dow-hdr { color:#8898b8; }
+.days-wrap {
+  display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap;
+  padding:2px 8px 8px;
+}
+.day-cell { width:calc(100% / 7); padding:2px; }
+.day-inner {
+  width:100%; height:44px; border-radius:7px;
+  display:-webkit-flex; display:flex;
+  -webkit-flex-direction:column; flex-direction:column;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:center; justify-content:center;
+  cursor:pointer; position:relative;
+  -webkit-tap-highlight-color:transparent; gap:2px;
+}
+.day-inner:active { opacity:0.7; }
+.day-num { font-size:0.85rem; font-weight:700; line-height:1; }
+.c-sarah  .day-inner { background:#fbb6ce; color:#702459; }
+.c-jeremy .day-inner { background:#90cdf4; color:#1a365d; }
+body.dark .c-sarah  .day-inner { background:#9b2c6a; color:#fbb6ce; }
+body.dark .c-jeremy .day-inner { background:#1d4a82; color:#90cdf4; }
+.c-empty .day-inner { background:transparent; cursor:default; }
+.c-pre   .day-inner { background:#f7fafc; color:#cbd5e0; cursor:default; }
+body.dark .c-pre .day-inner { background:#141d2e; color:#2d3f5a; }
+.c-changed .day-inner { background:#fbd38d!important; color:#744210!important; outline:2px solid #f6ad55; outline-offset:-2px; }
+body.dark .c-changed .day-inner { background:#7a5200!important; color:#fbd38d!important; }
+.c-today .day-inner { outline:3px solid #667eea; outline-offset:-3px; }
+.c-today .day-num { font-weight:900; }
+.c-past .day-inner { opacity:0.42; }
+.h-dot { width:4px; height:4px; border-radius:50%; background:#f6ad55; flex-shrink:0; }
+.n-dot { position:absolute; top:3px; right:3px; width:5px; height:5px; border-radius:50%; background:#667eea; }
+.highlighted .day-inner { outline:3px solid #667eea!important; outline-offset:-3px; }
+
+/* ── HOLIDAY PANEL ── */
+.hol-panel { background:#fff; border-top:1px solid #e2e8f0; padding:16px 10px 36px; }
+body.dark .hol-panel { background:#1a2035; border-color:#2a3550; }
+.hol-panel h3 { font-size:1rem; font-weight:800; margin-bottom:12px; padding:0 2px; }
+.hol-row-wrap { display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:6px; }
+.hol-row {
+  display:-webkit-flex; display:flex; -webkit-align-items:center; align-items:center;
+  gap:8px; padding:8px 10px; border-radius:8px;
+  background:#f8f9ff; border:1px solid #e8eaf6; font-size:0.8rem;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  width:100%;
+}
+body.dark .hol-row { background:#141d2e; border-color:#2a3550; }
+.hol-row:active { opacity:0.7; }
+.hol-date { font-weight:700; color:#718096; width:78px; flex-shrink:0; font-size:0.73rem; }
+body.dark .hol-date { color:#8898b8; }
+.hol-name { font-weight:600; flex:1; }
+.hol-badge { font-size:0.7rem; font-weight:700; padding:2px 7px; border-radius:20px; flex-shrink:0; }
+.hb-s { background:#fff0f6; color:#b5367a; }
+.hb-j { background:#ebf8ff; color:#2b6cb0; }
+body.dark .hb-s { background:#2a0f1e; color:#f687b3; }
+body.dark .hb-j { background:#0d1e33; color:#63b3ed; }
+
+/* ── MODALS / SHEETS ── */
+.overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.55); z-index:500;
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:flex-end; align-items:flex-end;
+  -webkit-justify-content:center; justify-content:center;
+}
+.sheet {
+  background:#fff; width:100%; max-width:520px;
+  border-radius:20px 20px 0 0; padding:20px 18px 36px;
+  max-height:90vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+body.dark .sheet { background:#1a2035; }
+.sheet-handle {
+  width:40px; height:4px; border-radius:2px;
+  background:#e2e8f0; margin:0 auto 16px;
+}
+body.dark .sheet-handle { background:#2a3550; }
+.sheet h2 { font-size:1.15rem; font-weight:800; margin-bottom:4px; }
+.sheet-date { color:#718096; font-size:0.85rem; margin-bottom:4px; }
+.sheet-hol { color:#ed8936; font-size:0.8rem; font-weight:700; margin-bottom:12px; }
+.assign-box {
+  padding:12px 14px; border-radius:10px; font-weight:700;
+  font-size:0.95rem; text-align:center; margin-bottom:14px; border:2px solid;
+}
+.ab-sarah  { background:#fff0f6; color:#b5367a; border-color:#f687b3; }
+.ab-jeremy { background:#ebf8ff; color:#2b6cb0; border-color:#63b3ed; }
+body.dark .ab-sarah  { background:#2a0f1e; color:#f687b3; border-color:#9b2c6a; }
+body.dark .ab-jeremy { background:#0d1e33; color:#63b3ed; border-color:#2b6cb0; }
+.sec-lbl {
+  font-size:0.72rem; font-weight:700; color:#718096;
+  text-transform:uppercase; letter-spacing:0.5px; margin-bottom:7px;
+}
+body.dark .sec-lbl { color:#8898b8; }
+.assign-row { display:-webkit-flex; display:flex; gap:8px; margin-bottom:12px; }
+.btn-pick {
+  -webkit-flex:1; flex:1; padding:12px; border-radius:10px;
+  font-weight:700; font-size:0.9rem; cursor:pointer;
+  font-family:inherit; border:2px solid; -webkit-tap-highlight-color:transparent;
+}
+.btn-pick:active { opacity:0.75; }
+.bp-sarah  { background:#fff0f6; color:#b5367a; border-color:#f687b3; }
+.bp-sarah.sel  { background:#f687b3; color:#fff; }
+.bp-jeremy { background:#ebf8ff; color:#2b6cb0; border-color:#63b3ed; }
+.bp-jeremy.sel { background:#63b3ed; color:#fff; }
+body.dark .bp-sarah  { background:#2a0f1e; color:#f687b3; border-color:#9b2c6a; }
+body.dark .bp-sarah.sel  { background:#9b2c6a; color:#fff; }
+body.dark .bp-jeremy { background:#0d1e33; color:#63b3ed; border-color:#2b6cb0; }
+body.dark .bp-jeremy.sel { background:#2b6cb0; color:#fff; }
+.note-ta {
+  width:100%; padding:10px 12px; border:2px solid #e2e8f0;
+  border-radius:10px; font-size:0.9rem; font-family:inherit;
+  background:#fff; color:#2d3748; outline:none; resize:none;
+  margin-bottom:12px; -webkit-appearance:none; min-height:70px;
+}
+body.dark .note-ta { background:#243050; border-color:#2a3550; color:#e8edf5; }
+.note-ta:focus { border-color:#667eea; }
+.flip-note {
+  background:#fef3cd; color:#744210; border:1px solid #f6ad55;
+  border-radius:10px; padding:10px 12px;
+  font-size:0.82rem; font-weight:600; text-align:center; margin-bottom:12px;
+}
+.tiny-note { font-size:0.72rem; color:#a0aec0; text-align:center; margin-bottom:12px; }
+.sheet-footer { display:-webkit-flex; display:flex; gap:8px; }
+.btn-sheet {
+  -webkit-flex:1; flex:1; padding:12px; border-radius:10px;
+  font-weight:700; font-size:0.9rem; cursor:pointer;
+  font-family:inherit; border:none; -webkit-tap-highlight-color:transparent;
+}
+.btn-sheet:active { opacity:0.75; }
+.bsh-close { background:#edf2f7; color:#4a5568; border:2px solid #e2e8f0; }
+.bsh-save  { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+.bsh-reset { -webkit-flex:0; flex:0; padding:12px 14px; background:#fff5f5; color:#c53030; border:2px solid #fc8181; }
+body.dark .bsh-close { background:#243050; color:#8898b8; border-color:#2a3550; }
+body.dark .bsh-reset { background:#2d0a0a; color:#fc8181; }
+
+/* GitHub setup modal */
+.gh-status-bar {
+  display:-webkit-flex; display:flex; -webkit-align-items:center; align-items:center;
+  gap:8px; padding:10px 14px; border-radius:10px; margin-bottom:14px;
+  font-size:0.82rem; font-weight:600;
+}
+.gh-status-bar.connected { background:#f0fff4; color:#276749; border:1px solid #9ae6b4; }
+.gh-status-bar.disconnected { background:#fff5f5; color:#9b2c2c; border:1px solid #fc8181; }
+body.dark .gh-status-bar.connected { background:#1a3829; color:#9ae6b4; }
+body.dark .gh-status-bar.disconnected { background:#2d0a0a; color:#fc8181; }
+
+.setup-step { display:-webkit-flex; display:flex; gap:10px; margin-bottom:13px; }
+.s-num {
+  width:24px; height:24px; border-radius:50%;
+  background:linear-gradient(135deg,#667eea,#764ba2); color:#fff;
+  font-weight:800; font-size:0.78rem; flex-shrink:0; margin-top:1px;
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:center; justify-content:center;
+}
+.s-body strong { font-size:0.85rem; display:block; margin-bottom:2px; }
+.s-body p { font-size:0.78rem; color:#718096; line-height:1.5; }
+.s-body a { color:#667eea; font-weight:700; }
+body.dark .s-body strong { color:#e8edf5; }
+.setup-hr { border:none; border-top:1px solid #e2e8f0; margin:14px 0; }
+body.dark .setup-hr { border-color:#2a3550; }
+.setup-err {
+  display:none; background:#fff5f5; border:1px solid #fc8181;
+  color:#c53030; border-radius:8px; padding:8px 12px;
+  font-size:0.8rem; font-weight:600; margin-bottom:10px;
+}
+.setup-field { margin-bottom:9px; }
+.setup-field label { display:block; font-size:0.75rem; font-weight:700; color:#718096; margin-bottom:4px; }
+body.dark .setup-field label { color:#8898b8; }
+.setup-field input, .setup-field select {
+  width:100%; padding:10px 12px; border:2px solid #e2e8f0;
+  border-radius:8px; font-size:0.88rem; background:#fff; color:#2d3748;
+  font-family:inherit; outline:none; -webkit-appearance:none;
+}
+body.dark .setup-field input, body.dark .setup-field select {
+  background:#243050; border-color:#2a3550; color:#e8edf5;
+}
+.setup-field input:focus, .setup-field select:focus { border-color:#667eea; }
+.setup-row { display:-webkit-flex; display:flex; gap:8px; -webkit-flex-wrap:wrap; flex-wrap:wrap; }
+.skip-lnk { text-align:center; font-size:0.75rem; color:#a0aec0; cursor:pointer; text-decoration:underline; margin-top:10px; }
+.poll-info { font-size:0.72rem; color:#a0aec0; text-align:center; margin-top:8px; }
+
+/* Desktop */
+@media (min-width:600px) {
+  .cal-wrap { padding:10px 16px; }
+  .mo-card { display:inline-block; width:calc(50% - 10px); vertical-align:top; margin:5px; }
+  .day-inner { height:48px; }
+  .hol-panel { padding:20px 20px 40px; }
+  .hol-row { width:calc(50% - 3px); }
+  .overlay { -webkit-align-items:center; align-items:center; padding:20px; }
+  .sheet { border-radius:20px; padding:28px 26px; }
+  .sheet-handle { display:none; }
+}
+@media (min-width:960px) {
+  .mo-card { width:calc(33.333% - 12px); }
+  .hol-row { width:calc(33.333% - 4px); }
+}
+@media (min-width:1200px) {
+  .mo-card { width:calc(25% - 12px); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#128106; Co-Parenting Schedule</h1>
+  <p>Jeremy &amp; Sarah &mdash; 2-2-3 Rotating Schedule &bull; Starts May 4, 2026</p>
+  <div id="sync-badge" class="nosetup" onclick="openSetup()">
+    &#9679; <span id="sync-lbl">Tap to connect GitHub sync</span>
+  </div>
+</header>
+
+<div id="flip-banner">&#9888; FLIPPED VIEW &mdash; Preview only. Edits disabled.</div>
+
+<div id="setup-banner">
+  <span>&#128279; Connect <strong>GitHub sync</strong> so Jeremy &amp; Sarah both see all changes</span>
+  <div style="display:flex;gap:8px;">
+    <button class="btn btn-blue" onclick="openSetup()" style="font-size:0.78rem;padding:7px 11px;">&#9881; Connect</button>
+    <button class="btn btn-gray"  onclick="dismissBanner()" style="font-size:0.78rem;padding:7px 11px;">Later</button>
+  </div>
+</div>
+
+<div id="ctrl-bar">
+  <div id="ctrl-top">
+    <div class="legend">
+      <div class="leg-item"><span class="leg-dot d-sarah"></span><span>Sarah</span></div>
+      <div class="leg-item"><span class="leg-dot d-jeremy"></span><span>Jeremy</span></div>
+      <div class="leg-item"><span class="leg-dot d-changed"></span><span style="font-size:0.72rem">Changed</span></div>
+      <div class="leg-item"><span class="leg-dot d-holiday"></span><span style="font-size:0.72rem">Holiday</span></div>
+    </div>
+    <button id="btn-options" onclick="togglePanel()">&#9881; Options &#9660;</button>
+  </div>
+  <div id="ctrl-panel">
+    <div class="ctrl-row">
+      <input type="date" id="search-date">
+      <button class="btn btn-blue" onclick="doSearch()">&#128269; Look Up</button>
+      <button class="btn btn-gray"  onclick="clearSearch()">&#10005;</button>
+    </div>
+    <div class="ctrl-row">
+      <select id="jump-sel" onchange="jumpTo(this.value)">
+        <option value="">&#128197; Jump to month&hellip;</option>
+      </select>
+    </div>
+    <div class="ctrl-row">
+      <div class="tog-wrap" id="dark-wrap" onclick="toggleDark()">
+        <span>&#9728;&#65039;</span>
+        <div class="tog-track" id="dark-track"></div>
+        <span>&#127769; Dark</span>
+      </div>
+      <div class="tog-wrap" id="flip-wrap" onclick="toggleFlip()">
+        <div class="tog-track" id="flip-track"></div>
+        <span>&#128260; Flip</span>
+      </div>
+    </div>
+    <div class="ctrl-row"><div id="search-result"></div></div>
+  </div>
+</div>
+
+<div id="cal-out"></div>
+
+<div class="hol-panel">
+  <h3>&#127881; Holiday Reference</h3>
+  <div id="hol-wrap" class="hol-row-wrap"></div>
+</div>
+
+<!-- DAY MODAL -->
+<div class="overlay" id="day-overlay" style="display:none" onclick="overlayTap(event,'day-overlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h2 id="m-title">Day Details</h2>
+    <div class="sheet-date" id="m-date"></div>
+    <div class="sheet-hol" id="m-hol" style="display:none"></div>
+    <div class="assign-box" id="m-box"></div>
+    <div id="m-edit">
+      <div class="sec-lbl">Change who has the kids</div>
+      <div class="assign-row">
+        <button class="btn-pick bp-sarah"  id="bp-s" onclick="pickPerson('sarah')">&#128105; Sarah</button>
+        <button class="btn-pick bp-jeremy" id="bp-j" onclick="pickPerson('jeremy')">&#128104; Jeremy</button>
+      </div>
+      <div class="sec-lbl">Note / Reminder</div>
+      <textarea class="note-ta" id="m-note" rows="3" placeholder="e.g. school pickup, doctor appt&#8230;"></textarea>
+      <div class="tiny-note" id="m-tiny-note">Changes save to GitHub and sync to both phones.</div>
+    </div>
+    <div class="flip-note" id="m-flip" style="display:none">
+      &#128260; <strong>Flipped view</strong> &mdash; turn off Flip to make real changes.
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-sheet bsh-close" onclick="closeDay()">Close</button>
+      <button class="btn-sheet bsh-save" id="m-save" onclick="saveDay()">&#128190; Save</button>
+      <button class="btn-sheet bsh-reset" id="m-reset" onclick="resetDay()" style="display:none">&#8634; Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- GITHUB SETUP MODAL -->
+<div class="overlay" id="setup-overlay" style="display:none" onclick="overlayTap(event,'setup-overlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h2>&#128279; GitHub Sync Setup</h2>
+    <p style="font-size:0.82rem;color:#718096;margin-bottom:14px;line-height:1.5;">
+      Your schedule lives on GitHub. Both Jeremy and Sarah connect to the same repository — any change either of you makes syncs automatically.
+    </p>
+
+    <div class="gh-status-bar disconnected" id="gh-status-bar">
+      &#10006; Not connected
+    </div>
+
+    <div class="setup-step">
+      <div class="s-num">1</div>
+      <div class="s-body">
+        <strong>Create the GitHub repository</strong>
+        <p>Go to <a href="https://github.com/new" target="_blank">github.com/new</a>. Name it <strong>coparent-schedule</strong>, set it to <strong>Public</strong>, and click <em>Create repository</em>.</p>
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="s-num">2</div>
+      <div class="s-body">
+        <strong>Upload the two files</strong>
+        <p>In the new repo click <em>uploading an existing file</em>. Upload both <strong>index.html</strong> and <strong>data.json</strong> from the <em>coparent-repo</em> folder on your Desktop. Commit them.</p>
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="s-num">3</div>
+      <div class="s-body">
+        <strong>Enable GitHub Pages</strong>
+        <p>In the repo: <em>Settings &rarr; Pages &rarr; Source: Deploy from branch &rarr; Branch: main &rarr; / (root) &rarr; Save.</em> Your URL will be <strong>https://USERNAME.github.io/coparent-schedule</strong></p>
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="s-num">4</div>
+      <div class="s-body">
+        <strong>Create a Personal Access Token</strong>
+        <p>Go to <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a> (classic). Give it a name, set expiration to <em>No expiration</em>, check <strong>repo</strong> scope, click <em>Generate token</em>. Copy it immediately &mdash; you only see it once!</p>
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="s-num">5</div>
+      <div class="s-body">
+        <strong>Enter your details below and connect</strong>
+        <p>Both Jeremy and Sarah do this once on their own device. You can share the same token.</p>
+      </div>
+    </div>
+
+    <hr class="setup-hr">
+    <div class="setup-err" id="setup-err"></div>
+
+    <div class="setup-field">
+      <label>GitHub Username</label>
+      <input id="c-owner" placeholder="e.g. steffanjeremy21" autocomplete="off" autocapitalize="none">
+    </div>
+    <div class="setup-field">
+      <label>Repository Name</label>
+      <input id="c-repo" value="coparent-schedule" autocapitalize="none">
+    </div>
+    <div class="setup-field">
+      <label>Personal Access Token (stored only on this device)</label>
+      <input id="c-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocapitalize="none">
+    </div>
+    <div class="setup-field">
+      <label>Sync every (seconds)</label>
+      <select id="c-interval">
+        <option value="30">30 seconds</option>
+        <option value="60" selected>1 minute</option>
+        <option value="120">2 minutes</option>
+        <option value="300">5 minutes</option>
+      </select>
+    </div>
+
+    <div class="setup-row" style="margin-bottom:6px;">
+      <button class="btn btn-blue" style="-webkit-flex:1;flex:1;" onclick="doConnect()">&#128279; Test &amp; Connect</button>
+      <button class="btn btn-gray" onclick="doDisconnect()">Disconnect</button>
+    </div>
+    <div class="setup-row">
+      <button class="btn btn-gray" style="-webkit-flex:1;flex:1;" onclick="closeSetup()">Close</button>
+    </div>
+    <div class="poll-info">Changes you or Sarah make will appear within the sync interval you choose above.</div>
+    <div class="skip-lnk" onclick="closeSetup()">Close without connecting</div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  SCHEDULE DATA
+// ════════════════════════════════════════════
+var START_DATE = new Date(2026, 4, 4);
+var CYCLE = ['sarah','sarah','jeremy','jeremy','sarah','sarah','sarah',
+             'jeremy','jeremy','sarah','sarah','jeremy','jeremy','jeremy'];
+var CYCLE_LEN = 14;
+
+var HOLIDAYS = {
+  '2026-01-01':"New Year's Day",      '2026-01-19':"MLK Jr. Day",
+  '2026-02-14':"Valentine's Day",     '2026-02-16':"Presidents' Day",
+  '2026-04-05':"Easter Sunday",       '2026-05-10':"Mother's Day",
+  '2026-05-25':"Memorial Day",        '2026-06-19':"Juneteenth",
+  '2026-06-21':"Father's Day",        '2026-07-04':"Independence Day",
+  '2026-09-07':"Labor Day",           '2026-10-12':"Columbus Day",
+  '2026-10-31':"Halloween",           '2026-11-11':"Veterans Day",
+  '2026-11-26':"Thanksgiving",        '2026-12-24':"Christmas Eve",
+  '2026-12-25':"Christmas Day",       '2026-12-31':"New Year's Eve",
+  '2027-01-01':"New Year's Day",      '2027-01-18':"MLK Jr. Day",
+  '2027-02-14':"Valentine's Day",     '2027-02-15':"Presidents' Day",
+  '2027-03-28':"Easter Sunday",       '2027-05-09':"Mother's Day",
+  '2027-05-31':"Memorial Day",        '2027-06-19':"Juneteenth",
+  '2027-06-20':"Father's Day",        '2027-07-04':"Independence Day",
+  '2027-09-06':"Labor Day",           '2027-10-11':"Columbus Day",
+  '2027-10-31':"Halloween",           '2027-11-11':"Veterans Day",
+  '2027-11-25':"Thanksgiving",        '2027-12-24':"Christmas Eve",
+  '2027-12-25':"Christmas Day",       '2027-12-31':"New Year's Eve"
+};
+
+var MONTH_NAMES = ['January','February','March','April','May','June',
+                   'July','August','September','October','November','December'];
+var DOW = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+var overrides  = {};
+var notes      = {};
+var darkMode   = false;
+var isFlipped  = false;
+var panelOpen  = false;
+var dayCtx     = null;
+var ghOwner    = '';
+var ghRepo     = 'coparent-schedule';
+var ghToken    = '';
+var ghSha      = null;       // current data.json SHA on GitHub
+var ghInterval = 60;         // poll seconds
+var pollTimer  = null;
+var ghReady    = false;
+
+var TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+
+// ════════════════════════════════════════════
+//  LOCAL STORAGE
+// ════════════════════════════════════════════
+function lsGet(k, def) {
+  try { var v = localStorage.getItem(k); return v ? (JSON.parse(v) || def) : def; }
+  catch(e) { return def; }
+}
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+
+// ════════════════════════════════════════════
+//  DATE KEY
+// ════════════════════════════════════════════
+function dkey(y, m, d) {
+  var mm = m + 1;
+  return y + '-' + (mm < 10 ? '0' : '') + mm + '-' + (d < 10 ? '0' : '') + d;
+}
+
+// ════════════════════════════════════════════
+//  SCHEDULE LOGIC
+// ════════════════════════════════════════════
+function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+
+function getOwner(y, m, d) {
+  var k  = dkey(y, m, d);
+  var fk = k.replace(/-/g,'_');
+  var ov = overrides[k] || overrides[fk];
+  if (ov) return { who: ov, changed: true };
+  var dt = new Date(y, m, d);
+  if (dt < START_DATE) return { who: null, changed: false };
+  var diff = daysBetween(START_DATE, dt);
+  var idx  = ((diff % CYCLE_LEN) + CYCLE_LEN) % CYCLE_LEN;
+  return { who: CYCLE[idx], changed: false };
+}
+function getDisplay(y, m, d) {
+  var r = getOwner(y, m, d);
+  if (!isFlipped || r.who === null) return r;
+  return { who: r.who === 'sarah' ? 'jeremy' : 'sarah', changed: r.changed };
+}
+
+// ════════════════════════════════════════════
+//  GITHUB SYNC
+// ════════════════════════════════════════════
+function ghApiUrl() {
+  return 'https://api.github.com/repos/' + ghOwner + '/' + ghRepo + '/contents/data.json';
+}
+function ghHeaders() {
+  return { 'Authorization': 'token ' + ghToken, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' };
+}
+
+function ghLoad(onDone) {
+  if (!ghOwner || !ghToken) return;
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', ghApiUrl(), true);
+  xhr.setRequestHeader('Authorization', 'token ' + ghToken);
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status === 200) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        ghSha = resp.sha;
+        var raw  = atob(resp.content.replace(/\n/g,'').replace(/\r/g,''));
+        var data = JSON.parse(raw);
+        overrides = data.overrides || {};
+        notes     = data.notes     || {};
+        lsSet('cp_ov', overrides);
+        lsSet('cp_nt', notes);
+        setBadge('synced', 'GitHub synced &#10003;');
+        renderAll();
+        if (onDone) onDone(true);
+      } catch(e) {
+        setBadge('offline', 'Parse error');
+        if (onDone) onDone(false);
+      }
+    } else if (xhr.status === 404) {
+      // File doesn't exist yet — create it
+      ghSha = null;
+      ghSave(function() { if (onDone) onDone(true); });
+    } else {
+      setBadge('offline', 'GitHub error ' + xhr.status);
+      if (onDone) onDone(false);
+    }
+  };
+  xhr.send();
+}
+
+function ghSave(onDone) {
+  if (!ghOwner || !ghToken) {
+    // No GitHub — just save locally
+    lsSet('cp_ov', overrides);
+    lsSet('cp_nt', notes);
+    renderAll();
+    return;
+  }
+  setBadge('saving', 'Saving&#8230;');
+  var payload = { overrides: overrides, notes: notes, lastUpdated: new Date().toISOString() };
+  var content = JSON.stringify(payload, null, 2);
+  // btoa with unicode support
+  var b64 = btoa(unescape(encodeURIComponent(content)));
+  var body = { message: 'Update schedule', content: b64 };
+  if (ghSha) body.sha = ghSha;
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('PUT', ghApiUrl(), true);
+  xhr.setRequestHeader('Authorization', 'token ' + ghToken);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status === 200 || xhr.status === 201) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.content && resp.content.sha) ghSha = resp.content.sha;
+        lsSet('cp_ov', overrides);
+        lsSet('cp_nt', notes);
+        setBadge('synced', 'Saved to GitHub &#10003;');
+        if (onDone) onDone(true);
+      } catch(e) { setBadge('synced', 'Saved'); if (onDone) onDone(true); }
+    } else if (xhr.status === 409) {
+      // Conflict — re-fetch SHA then retry
+      setBadge('saving', 'Resolving conflict&#8230;');
+      ghLoad(function() { ghSave(onDone); });
+    } else {
+      setBadge('offline', 'Save failed (' + xhr.status + ')');
+      if (onDone) onDone(false);
+    }
+  };
+  xhr.send(JSON.stringify(body));
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  if (!ghOwner || !ghToken || ghInterval < 10) return;
+  pollTimer = setInterval(function() { ghLoad(null); }, ghInterval * 1000);
+}
+
+function setBadge(state, html) {
+  var b = document.getElementById('sync-badge');
+  var l = document.getElementById('sync-lbl');
+  b.className = state;
+  l.innerHTML = html;
+}
+
+// ════════════════════════════════════════════
+//  SETUP MODAL
+// ════════════════════════════════════════════
+function openSetup() {
+  var saved = lsGet('cp_gh', null);
+  if (saved) {
+    document.getElementById('c-owner').value    = saved.owner    || '';
+    document.getElementById('c-repo').value     = saved.repo     || 'coparent-schedule';
+    document.getElementById('c-token').value    = saved.token    || '';
+    document.getElementById('c-interval').value = String(saved.interval || 60);
+  }
+  updateGhStatusBar();
+  document.getElementById('setup-overlay').style.display = '-webkit-flex';
+  document.getElementById('setup-overlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeSetup() {
+  document.getElementById('setup-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+function updateGhStatusBar() {
+  var bar = document.getElementById('gh-status-bar');
+  if (ghReady) {
+    bar.className   = 'gh-status-bar connected';
+    bar.innerHTML   = '&#10003; Connected to github.com/' + ghOwner + '/' + ghRepo;
+  } else {
+    bar.className   = 'gh-status-bar disconnected';
+    bar.innerHTML   = '&#10006; Not connected';
+  }
+}
+function doConnect() {
+  var owner    = document.getElementById('c-owner').value.trim();
+  var repo     = document.getElementById('c-repo').value.trim();
+  var token    = document.getElementById('c-token').value.trim();
+  var interval = parseInt(document.getElementById('c-interval').value, 10);
+  var errEl    = document.getElementById('setup-err');
+  if (!owner || !token) {
+    errEl.textContent = 'Please enter your GitHub username and token.';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  ghOwner    = owner;
+  ghRepo     = repo || 'coparent-schedule';
+  ghToken    = token;
+  ghInterval = interval || 60;
+  lsSet('cp_gh', { owner: ghOwner, repo: ghRepo, token: ghToken, interval: ghInterval });
+  setBadge('saving', 'Connecting&#8230;');
+  ghLoad(function(ok) {
+    if (ok) {
+      ghReady = true;
+      updateGhStatusBar();
+      document.getElementById('setup-banner').classList.add('hidden');
+      startPolling();
+    } else {
+      ghReady = false;
+      updateGhStatusBar();
+    }
+  });
+}
+function doDisconnect() {
+  ghOwner = ''; ghRepo = 'coparent-schedule'; ghToken = ''; ghReady = false;
+  if (pollTimer) clearInterval(pollTimer);
+  lsSet('cp_gh', null);
+  setBadge('nosetup', 'Tap to connect GitHub sync');
+  updateGhStatusBar();
+  document.getElementById('c-owner').value = '';
+  document.getElementById('c-token').value = '';
+}
+function dismissBanner() {
+  document.getElementById('setup-banner').classList.add('hidden');
+  lsSet('cp_banner_dismissed', true);
+}
+
+// ════════════════════════════════════════════
+//  THEME
+// ════════════════════════════════════════════
+function applyTheme() {
+  document.body.className = darkMode ? 'dark' : '';
+  document.getElementById('dark-wrap').className = darkMode ? 'tog-wrap tog-on' : 'tog-wrap';
+}
+function toggleDark() { darkMode = !darkMode; lsSet('cp_dark', darkMode); applyTheme(); }
+
+// ════════════════════════════════════════════
+//  FLIP
+// ════════════════════════════════════════════
+function applyFlip() {
+  document.getElementById('flip-banner').className = isFlipped ? 'on' : '';
+  document.getElementById('flip-wrap').className   = isFlipped ? 'tog-wrap tog-flip-on' : 'tog-wrap';
+}
+function toggleFlip() { isFlipped = !isFlipped; lsSet('cp_flip', isFlipped); applyFlip(); renderAll(); }
+
+// ════════════════════════════════════════════
+//  CONTROLS PANEL
+// ════════════════════════════════════════════
+function togglePanel() {
+  panelOpen = !panelOpen;
+  document.getElementById('ctrl-panel').className  = panelOpen ? 'open' : '';
+  document.getElementById('btn-options').innerHTML = '&#9881; Options ' + (panelOpen ? '&#9650;' : '&#9660;');
+}
+
+// ════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════
+function renderAll() { buildCal(); buildHolidays(); }
+
+function buildCal() {
+  var out  = document.getElementById('cal-out');
+  var jsel = document.getElementById('jump-sel');
+  out.innerHTML  = '';
+  jsel.innerHTML = '<option value="">&#128197; Jump to month&hellip;</option>';
+
+  var months = [];
+  var y = 2026, m = 4;
+  while (!(y === 2028)) {
+    months.push({ y: y, m: m });
+    var opt = document.createElement('option');
+    opt.value = 'mc' + y + '_' + m;
+    opt.textContent = MONTH_NAMES[m] + ' ' + y;
+    jsel.appendChild(opt);
+    m++;
+    if (m > 11) { m = 0; y++; }
+  }
+
+  var curYear = null, wrap = null;
+  for (var i = 0; i < months.length; i++) {
+    var yr = months[i].y, mo = months[i].m;
+    if (yr !== curYear) {
+      curYear = yr;
+      var yl = document.createElement('div');
+      yl.className = 'year-lbl'; yl.textContent = yr;
+      out.appendChild(yl);
+      wrap = document.createElement('div');
+      wrap.className = 'cal-wrap';
+      out.appendChild(wrap);
+    }
+    wrap.appendChild(makeCard(yr, mo));
+  }
+}
+
+function makeCard(year, month) {
+  var dim = new Date(year, month + 1, 0).getDate();
+  var sc = 0, jc = 0, i, r;
+  for (i = 1; i <= dim; i++) {
+    r = getDisplay(year, month, i);
+    if (r.who === 'sarah')  sc++;
+    if (r.who === 'jeremy') jc++;
+  }
+
+  var card = document.createElement('div');
+  card.className = 'mo-card'; card.id = 'mc' + year + '_' + month;
+
+  var hdr = document.createElement('div');
+  hdr.className = 'mo-hdr'; hdr.textContent = MONTH_NAMES[month] + ' ' + year;
+  card.appendChild(hdr);
+
+  var stats = document.createElement('div');
+  stats.className = 'mo-stats';
+  stats.innerHTML = '<span class="st-s">&#128105; Sarah: ' + sc + 'd</span>'
+                  + '<span class="st-j">&#128104; Jeremy: ' + jc + 'd</span>';
+  card.appendChild(stats);
+
+  var dowRow = document.createElement('div'); dowRow.className = 'dow-row';
+  for (i = 0; i < 7; i++) {
+    var dh = document.createElement('div'); dh.className = 'dow-hdr'; dh.textContent = DOW[i];
+    dowRow.appendChild(dh);
+  }
+  card.appendChild(dowRow);
+
+  var wrap = document.createElement('div'); wrap.className = 'days-wrap';
+  var firstDow = new Date(year, month, 1).getDay();
+  for (i = 0; i < firstDow; i++) {
+    var emp = document.createElement('div'); emp.className = 'day-cell c-empty';
+    var ei  = document.createElement('div'); ei.className = 'day-inner';
+    emp.appendChild(ei); wrap.appendChild(emp);
+  }
+
+  for (var day = 1; day <= dim; day++) {
+    var k   = dkey(year, month, day);
+    var fk  = k.replace(/-/g,'_');
+    var res = getDisplay(year, month, day);
+    var who = res.who, chg = res.changed;
+    var dt  = new Date(year, month, day);
+    var hol = HOLIDAYS[k];
+    var hasNote = !!(notes[k] || notes[fk]);
+
+    var cell  = document.createElement('div');
+    var inner = document.createElement('div');
+    inner.className = 'day-inner';
+    cell.id = 'mc' + year + '_' + month + '_' + day;   // unique id for search highlight
+
+    var cls = 'day-cell ';
+    if      (who === null)     cls += 'c-pre';
+    else if (who === 'sarah')  cls += 'c-sarah';
+    else                       cls += 'c-jeremy';
+    if (chg)                           cls += ' c-changed';
+    if (dt < TODAY)                    cls += ' c-past';
+    if (dt.getTime() === TODAY.getTime()) cls += ' c-today';
+    cell.className = cls;
+
+    var numEl = document.createElement('span');
+    numEl.className = 'day-num'; numEl.textContent = day;
+    inner.appendChild(numEl);
+
+    if (hol) {
+      var hdot = document.createElement('span'); hdot.className = 'h-dot'; inner.appendChild(hdot);
+    }
+    if (hasNote) {
+      var ndot = document.createElement('span'); ndot.className = 'n-dot'; inner.appendChild(ndot);
+    }
+
+    cell.appendChild(inner);
+
+    if (who !== null) {
+      (function(y2, m2, d2) {
+        inner.onclick = function() { openDay(y2, m2, d2); };
+      }(year, month, day));
+    }
+    wrap.appendChild(cell);
+  }
+  card.appendChild(wrap);
+  return card;
+}
+
+function refreshCard(y, m) {
+  var old = document.getElementById('mc' + y + '_' + m);
+  if (old && old.parentNode) old.parentNode.replaceChild(makeCard(y, m), old);
+}
+
+// ════════════════════════════════════════════
+//  DAY MODAL
+// ════════════════════════════════════════════
+function openDay(y, m, d) {
+  dayCtx = { y:y, m:m, d:d };
+  var k   = dkey(y, m, d);
+  var fk  = k.replace(/-/g,'_');
+  var res = getDisplay(y, m, d);
+  var who = res.who, chg = res.changed;
+  var hol = HOLIDAYS[k];
+
+  document.getElementById('m-date').textContent = new Date(y,m,d).toLocaleDateString('en-US',
+    { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  var holEl = document.getElementById('m-hol');
+  if (hol) { holEl.textContent = hol; holEl.style.display = 'block'; }
+  else      { holEl.style.display = 'none'; }
+
+  var box = document.getElementById('m-box');
+  box.className   = 'assign-box ' + (who === 'sarah' ? 'ab-sarah' : 'ab-jeremy');
+  box.textContent = who === 'sarah' ? 'Sarah has the kids' : 'Jeremy has the kids';
+
+  var editEl  = document.getElementById('m-edit');
+  var flipEl  = document.getElementById('m-flip');
+  var saveBtn = document.getElementById('m-save');
+  var rstBtn  = document.getElementById('m-reset');
+
+  if (isFlipped) {
+    editEl.style.display = 'none'; flipEl.style.display = 'block'; saveBtn.style.display = 'none';
+  } else {
+    editEl.style.display = 'block'; flipEl.style.display = 'none'; saveBtn.style.display = 'block';
+    document.getElementById('bp-s').className = 'btn-pick bp-sarah'  + (who==='sarah'  ? ' sel' : '');
+    document.getElementById('bp-j').className = 'btn-pick bp-jeremy' + (who==='jeremy' ? ' sel' : '');
+    document.getElementById('m-note').value   = notes[fk] || notes[k] || '';
+    rstBtn.style.display = chg ? 'block' : 'none';
+    document.getElementById('m-tiny-note').textContent = ghReady
+      ? 'Saved to GitHub — both phones update within ' + ghInterval + 's.'
+      : 'Saved locally on this device. Connect GitHub to sync.';
+  }
+
+  document.getElementById('day-overlay').style.display = '-webkit-flex';
+  document.getElementById('day-overlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeDay() {
+  document.getElementById('day-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  dayCtx = null;
+}
+function pickPerson(who) {
+  if (!dayCtx || isFlipped) return;
+  document.getElementById('bp-s').className = 'btn-pick bp-sarah'  + (who==='sarah'  ? ' sel' : '');
+  document.getElementById('bp-j').className = 'btn-pick bp-jeremy' + (who==='jeremy' ? ' sel' : '');
+}
+function saveDay() {
+  if (!dayCtx || isFlipped) return;
+  var ctx  = { y: dayCtx.y, m: dayCtx.m, d: dayCtx.d };
+  var k    = dkey(ctx.y, ctx.m, ctx.d);
+  var note = document.getElementById('m-note').value.trim();
+  // Which person is selected?
+  var bps = document.getElementById('bp-s');
+  if (bps.className.indexOf('sel') !== -1) overrides[k] = 'sarah';
+  var bpj = document.getElementById('bp-j');
+  if (bpj.className.indexOf('sel') !== -1) overrides[k] = 'jeremy';
+  if (note) notes[k] = note; else delete notes[k];
+  closeDay();
+  ghSave(function() { refreshCard(ctx.y, ctx.m); buildHolidays(); });
+  if (!ghReady) { refreshCard(ctx.y, ctx.m); buildHolidays(); }
+}
+function resetDay() {
+  if (!dayCtx || isFlipped) return;
+  var ctx = { y: dayCtx.y, m: dayCtx.m, d: dayCtx.d };
+  var k   = dkey(ctx.y, ctx.m, ctx.d);
+  delete overrides[k];
+  delete overrides[k.replace(/-/g,'_')];
+  closeDay();
+  ghSave(function() { refreshCard(ctx.y, ctx.m); buildHolidays(); });
+  if (!ghReady) { refreshCard(ctx.y, ctx.m); buildHolidays(); }
+}
+
+// ════════════════════════════════════════════
+//  SEARCH
+// ════════════════════════════════════════════
+function doSearch() {
+  var val = document.getElementById('search-date').value;
+  if (!val) return;
+  var pts = val.split('-');
+  var y = parseInt(pts[0],10), m = parseInt(pts[1],10)-1, d = parseInt(pts[2],10);
+  var res = getDisplay(y, m, d);
+  var hol = HOLIDAYS[val];
+  var rEl = document.getElementById('search-result');
+  var ds  = new Date(y,m,d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  rEl.style.display = 'block';
+  if (res.who === null) {
+    rEl.className = 'res-none'; rEl.textContent = ds + ' — before schedule start';
+  } else if (res.who === 'sarah') {
+    rEl.className = 'res-sarah';
+    rEl.textContent = 'Sarah has the kids — ' + ds + (hol ? ' — ' + hol : '');
+  } else {
+    rEl.className = 'res-jeremy';
+    rEl.textContent = 'Jeremy has the kids — ' + ds + (hol ? ' — ' + hol : '');
+  }
+  var cellId = 'mc' + y + '_' + m + '_' + d;
+  var cell   = document.getElementById(cellId);
+  if (cell) {
+    cell.scrollIntoView({ block:'center' });
+    cell.className += ' highlighted';
+    setTimeout(function(){ cell.className = cell.className.replace(' highlighted',''); }, 3000);
+  }
+}
+function clearSearch() {
+  document.getElementById('search-date').value = '';
+  var r = document.getElementById('search-result');
+  r.style.display = 'none'; r.textContent = '';
+}
+document.getElementById('search-date').addEventListener('keydown', function(e){
+  if (e.keyCode === 13) doSearch();
+});
+
+// ════════════════════════════════════════════
+//  JUMP
+// ════════════════════════════════════════════
+function jumpTo(id) {
+  if (!id) return;
+  var el = document.getElementById(id);
+  if (el) el.scrollIntoView({ block:'start' });
+  setTimeout(function(){ document.getElementById('jump-sel').value = ''; }, 400);
+}
+
+// ════════════════════════════════════════════
+//  HOLIDAYS PANEL
+// ════════════════════════════════════════════
+function buildHolidays() {
+  var wrap = document.getElementById('hol-wrap'); wrap.innerHTML = '';
+  var keys = Object.keys(HOLIDAYS).sort();
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i], name = HOLIDAYS[k];
+    var pts = k.split('-');
+    var hy = parseInt(pts[0],10), hm = parseInt(pts[1],10)-1, hd = parseInt(pts[2],10);
+    var who = getDisplay(hy, hm, hd).who;
+    var ds  = new Date(hy,hm,hd).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    var badge = who === 'sarah'  ? '<span class="hol-badge hb-s">Sarah</span>'
+              : who === 'jeremy' ? '<span class="hol-badge hb-j">Jeremy</span>' : '';
+    var row = document.createElement('div'); row.className = 'hol-row';
+    row.innerHTML = '<span class="hol-date">' + ds + ' ' + hy + '</span>'
+                  + '<span class="hol-name">' + name + '</span>' + badge;
+    (function(cellY,cellM,cellD){
+      row.onclick = function(){
+        var c = document.getElementById('mc'+cellY+'_'+cellM+'_'+cellD);
+        if (c){ c.scrollIntoView({block:'center'}); c.className+=' highlighted';
+                setTimeout(function(){ c.className=c.className.replace(' highlighted',''); },3000); }
+      };
+    }(hy,hm,hd));
+    wrap.appendChild(row);
+  }
+}
+
+// ════════════════════════════════════════════
+//  OVERLAY DISMISS
+// ════════════════════════════════════════════
+function overlayTap(e, id) {
+  if (e.target === document.getElementById(id)) {
+    if (id === 'day-overlay')   closeDay();
+    if (id === 'setup-overlay') closeSetup();
+  }
+}
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+overrides  = lsGet('cp_ov',   {});
+notes      = lsGet('cp_nt',   {});
+darkMode   = lsGet('cp_dark', false);
+isFlipped  = lsGet('cp_flip', false);
+
+applyTheme();
+applyFlip();
+if (lsGet('cp_banner_dismissed', false)) document.getElementById('setup-banner').classList.add('hidden');
+
+renderAll();
+
+// Auto-connect GitHub if config exists
+var savedGh = lsGet('cp_gh', null);
+if (savedGh && savedGh.owner && savedGh.token) {
+  ghOwner    = savedGh.owner;
+  ghRepo     = savedGh.repo     || 'coparent-schedule';
+  ghToken    = savedGh.token;
+  ghInterval = savedGh.interval || 60;
+  setBadge('saving', 'Connecting&#8230;');
+  ghLoad(function(ok) {
+    if (ok) { ghReady = true; startPolling(); document.getElementById('setup-banner').classList.add('hidden'); }
+    else    { setBadge('offline', 'GitHub error — tap to retry'); }
+  });
+} else {
+  setBadge('nosetup', 'Tap to connect GitHub sync');
+}
+
+// Scroll to current month
+setTimeout(function() {
+  var target = (TODAY >= START_DATE)
+    ? document.getElementById('mc' + TODAY.getFullYear() + '_' + TODAY.getMonth())
+    : document.getElementById('mc2026_4');
+  if (target) target.scrollIntoView({ block:'start' });
+}, 300);
+</script>
+</body>
+</html>
