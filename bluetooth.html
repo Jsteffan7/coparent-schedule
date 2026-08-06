@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#764ba2">
+<title>BLE Radar &mdash; Bluetooth Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width:100%; overflow-x:hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  background:#0f1623; color:#e8edf5;
+  -webkit-text-size-adjust:100%;
+  -webkit-tap-highlight-color:transparent;
+  padding-bottom:30px;
+}
+
+/* ── HEADER ── */
+header {
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:#fff; padding:14px 16px 12px; text-align:center;
+}
+header h1 { font-size:1.25rem; font-weight:800; letter-spacing:0.3px; }
+header p  { font-size:0.74rem; opacity:0.88; margin-top:3px; }
+
+/* ── BANNERS ── */
+.banner {
+  padding:10px 14px; font-size:0.78rem; font-weight:600; line-height:1.45;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.banner b { font-weight:800; }
+.banner code {
+  font-family:ui-monospace,Menlo,Consolas,monospace; font-size:0.72rem;
+  background:rgba(255,255,255,0.12); padding:1px 5px; border-radius:4px;
+  word-break:break-all;
+}
+.bn-warn { background:#3d2a08; color:#fbd38d; }
+.bn-err  { background:#3a1620; color:#feb2b2; }
+.bn-info { background:#0d1e33; color:#90cdf4; }
+.bn-ok   { background:#0f2e1e; color:#9ae6b4; }
+.banner.hidden { display:none; }
+
+/* ── RADAR ── */
+#radar-wrap {
+  position:relative; width:100%; max-width:520px; margin:0 auto;
+  padding:10px 12px 0;
+}
+#radar { width:100%; display:block; touch-action:manipulation; }
+#radar-hint {
+  text-align:center; padding:6px 10px 0; min-height:1.2em;
+  font-size:0.72rem; font-weight:700; color:#8898b8; pointer-events:none;
+}
+
+/* ── STAT STRIP ── */
+#strip {
+  display:-webkit-flex; display:flex;
+  max-width:520px; margin:2px auto 0; padding:0 12px;
+  gap:8px;
+}
+.stat {
+  flex:1; background:#1a2035; border:1px solid #2a3550; border-radius:10px;
+  padding:8px 6px; text-align:center; min-width:0;
+}
+.stat .lbl {
+  font-size:0.6rem; font-weight:800; color:#8898b8;
+  text-transform:uppercase; letter-spacing:0.6px;
+}
+.stat .val {
+  font-size:1.02rem; font-weight:800; margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.stat .val.dim { color:#4a5a78; }
+
+/* ── CONTROLS ── */
+#controls {
+  max-width:520px; margin:12px auto 0; padding:0 12px;
+  display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:8px;
+}
+.btn {
+  padding:11px 15px; border:none; border-radius:9px;
+  font-size:0.85rem; font-weight:800; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:active { opacity:0.72; }
+.btn:disabled { opacity:0.4; cursor:default; }
+.btn-blue  { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+.btn-red   { background:#e53e3e; color:#fff; }
+.btn-gray  { background:#243050; color:#8898b8; border:1px solid #2a3550; }
+.btn-green { background:#48bb78; color:#fff; }
+.btn-grow  { -webkit-flex:1; flex:1; }
+
+/* ── DEVICE LIST ── */
+#list-wrap { max-width:520px; margin:16px auto 0; padding:0 12px; }
+.sec-hdr {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:space-between; justify-content:space-between;
+  font-size:0.72rem; font-weight:800; color:#8898b8;
+  text-transform:uppercase; letter-spacing:0.8px;
+  padding:0 2px 8px;
+}
+.dev {
+  background:#1a2035; border:1px solid #2a3550; border-radius:12px;
+  padding:10px 12px; margin-bottom:8px; cursor:pointer;
+  -webkit-transition:border-color .15s; transition:border-color .15s;
+}
+.dev:active { opacity:0.75; }
+.dev.sel { border-color:#667eea; background:#1d2440; }
+.dev.stale { opacity:0.42; }
+.dev-top {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center; gap:8px;
+}
+.dev-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.dev-name {
+  font-size:0.88rem; font-weight:700; -webkit-flex:1; flex:1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.dev-dist { font-size:0.95rem; font-weight:800; white-space:nowrap; }
+.dev-sub {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  gap:8px; margin-top:5px; font-size:0.68rem; color:#8898b8; font-weight:600;
+}
+.dev-sub .sp { -webkit-flex:1; flex:1; }
+.tag {
+  font-size:0.62rem; font-weight:800; padding:1px 6px; border-radius:20px;
+  background:#243050; color:#90cdf4; letter-spacing:0.3px;
+}
+.tag.find { background:#3d2a08; color:#fbd38d; }
+.bar {
+  height:4px; border-radius:2px; background:#243050;
+  margin-top:7px; overflow:hidden;
+}
+.bar > i { display:block; height:100%; border-radius:2px; }
+.empty {
+  text-align:center; color:#4a5a78; font-size:0.82rem;
+  font-weight:600; padding:26px 10px; line-height:1.6;
+}
+
+/* ── HUNT PANEL ── */
+#hunt {
+  position:fixed; left:0; right:0; bottom:0; top:0; z-index:500;
+  background:#0f1623; display:none;
+  -webkit-flex-direction:column; flex-direction:column;
+}
+#hunt.on { display:-webkit-flex; display:flex; }
+#hunt-hdr {
+  background:linear-gradient(135deg,#667eea,#764ba2); color:#fff;
+  padding:12px 14px;
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center; gap:10px;
+}
+#hunt-hdr .t { -webkit-flex:1; flex:1; min-width:0; }
+#hunt-hdr .t b { font-size:0.98rem; font-weight:800; display:block;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#hunt-hdr .t span { font-size:0.7rem; opacity:0.85; }
+#hunt-body {
+  -webkit-flex:1; flex:1; display:-webkit-flex; display:flex;
+  -webkit-flex-direction:column; flex-direction:column;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:center; justify-content:center;
+  padding:16px; gap:10px;
+}
+#arrow-box { width:100%; max-width:340px; position:relative; }
+#arrow { width:100%; display:block; }
+#hunt-dist { font-size:3.1rem; font-weight:900; line-height:1; letter-spacing:-1px; }
+#hunt-dist small { font-size:1.1rem; font-weight:800; color:#8898b8; }
+#hunt-range { font-size:0.78rem; font-weight:700; color:#8898b8; }
+#hunt-msg {
+  font-size:0.82rem; font-weight:700; text-align:center; line-height:1.5;
+  min-height:2.4em; padding:0 8px; max-width:340px;
+}
+#hunt-meter {
+  width:100%; max-width:340px; height:9px; border-radius:5px;
+  background:#243050; overflow:hidden;
+}
+#hunt-meter > i { display:block; height:100%; border-radius:5px;
+  -webkit-transition:width .3s; transition:width .3s; }
+#hunt-foot {
+  padding:12px; display:-webkit-flex; display:flex; gap:8px;
+  border-top:1px solid #2a3550;
+}
+
+/* ── SHEET (settings / help) ── */
+.sheet {
+  position:fixed; inset:0; z-index:600; background:rgba(0,0,0,0.6);
+  display:none; -webkit-align-items:flex-end; align-items:flex-end;
+}
+.sheet.on { display:-webkit-flex; display:flex; }
+.sheet-in {
+  background:#1a2035; width:100%; max-height:88vh; overflow-y:auto;
+  border-radius:18px 18px 0 0; padding:18px 16px 30px;
+  -webkit-overflow-scrolling:touch;
+}
+.sheet-in h3 { font-size:1.05rem; font-weight:800; margin-bottom:4px; }
+.sheet-in h4 {
+  font-size:0.72rem; font-weight:800; color:#8898b8;
+  text-transform:uppercase; letter-spacing:0.8px; margin:18px 0 8px;
+}
+.sheet-in p { font-size:0.8rem; line-height:1.6; color:#b8c4da; margin-bottom:9px; }
+.sheet-in ul { margin:0 0 9px 18px; }
+.sheet-in li { font-size:0.8rem; line-height:1.6; color:#b8c4da; margin-bottom:5px; }
+.fld { margin-bottom:14px; }
+.fld label {
+  display:-webkit-flex; display:flex;
+  -webkit-justify-content:space-between; justify-content:space-between;
+  font-size:0.78rem; font-weight:700; margin-bottom:6px;
+}
+.fld label span { color:#90cdf4; font-weight:800; }
+.fld .hint { font-size:0.68rem; color:#6b7c9c; margin-top:5px; line-height:1.5; }
+input[type=range] { width:100%; -webkit-appearance:none; appearance:none;
+  height:6px; border-radius:3px; background:#243050; outline:none; }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+  background:#667eea; cursor:pointer; }
+input[type=range]::-moz-range-thumb {
+  width:22px; height:22px; border:none; border-radius:50%;
+  background:#667eea; cursor:pointer; }
+select {
+  width:100%; padding:10px; border:1px solid #2a3550; border-radius:9px;
+  background:#243050; color:#e8edf5; font-size:0.85rem;
+  font-family:inherit; outline:none; -webkit-appearance:none; appearance:none;
+}
+.seg {
+  display:-webkit-flex; display:flex; background:#243050;
+  border-radius:9px; padding:3px; gap:3px;
+}
+.seg button {
+  -webkit-flex:1; flex:1; padding:8px 4px; border:none; border-radius:7px;
+  background:transparent; color:#8898b8; font-size:0.78rem; font-weight:800;
+  font-family:inherit; cursor:pointer;
+}
+.seg button.on { background:#667eea; color:#fff; }
+.tog-row {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:space-between; justify-content:space-between;
+  padding:10px 0; font-size:0.82rem; font-weight:700;
+  border-bottom:1px solid #243050; cursor:pointer;
+}
+.tog-track {
+  width:44px; height:24px; border-radius:12px; background:#3a4560;
+  position:relative; flex-shrink:0;
+  -webkit-transition:background .25s; transition:background .25s;
+}
+.tog-track::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:18px; height:18px; border-radius:50%; background:#fff;
+  -webkit-transition:-webkit-transform .25s; transition:transform .25s;
+}
+.tog-row.on .tog-track { background:#667eea; }
+.tog-row.on .tog-track::after {
+  -webkit-transform:translateX(20px); transform:translateX(20px); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BLE Radar</h1>
+  <p>Bluetooth scanner &middot; distance &amp; direction finder</p>
+</header>
+
+<div id="bn-support" class="banner hidden"></div>
+<div id="bn-compass" class="banner hidden"></div>
+
+<div id="radar-wrap">
+  <canvas id="radar"></canvas>
+  <div id="radar-hint"></div>
+</div>
+
+<div id="strip">
+  <div class="stat"><div class="lbl">Devices</div><div class="val" id="s-count">0</div></div>
+  <div class="stat"><div class="lbl">Heading</div><div class="val dim" id="s-head">&mdash;</div></div>
+  <div class="stat"><div class="lbl">Closest</div><div class="val dim" id="s-near">&mdash;</div></div>
+</div>
+
+<div id="controls">
+  <button class="btn btn-blue btn-grow" id="btn-scan">Start scan</button>
+  <button class="btn btn-gray" id="btn-set">Settings</button>
+  <button class="btn btn-gray" id="btn-help">?</button>
+</div>
+
+<div id="list-wrap">
+  <div class="sec-hdr">
+    <span id="list-title">Nearby devices</span>
+    <span id="list-sub"></span>
+  </div>
+  <div id="list"></div>
+</div>
+
+<!-- ── HUNT MODE ── -->
+<div id="hunt">
+  <div id="hunt-hdr">
+    <div class="t"><b id="hunt-name">Device</b><span id="hunt-id"></span></div>
+    <button class="btn btn-gray" id="hunt-close" style="background:rgba(255,255,255,.18);color:#fff;border:none">Done</button>
+  </div>
+  <div id="hunt-body">
+    <div id="arrow-box"><canvas id="arrow"></canvas></div>
+    <div id="hunt-dist">&mdash;</div>
+    <div id="hunt-range">&nbsp;</div>
+    <div id="hunt-meter"><i style="width:0%"></i></div>
+    <div id="hunt-msg"></div>
+  </div>
+  <div id="hunt-foot">
+    <button class="btn btn-gray btn-grow" id="hunt-reset">Reset bearing</button>
+    <button class="btn btn-gray" id="hunt-sound">Sound: off</button>
+  </div>
+</div>
+
+<!-- ── SETTINGS ── -->
+<div class="sheet" id="sheet-set">
+  <div class="sheet-in">
+    <h3>Settings</h3>
+
+    <h4>Environment</h4>
+    <div class="fld">
+      <label>Signal environment</label>
+      <select id="f-env">
+        <option value="2.0">Open air / line of sight (n = 2.0)</option>
+        <option value="2.5" selected>Normal room (n = 2.5)</option>
+        <option value="3.0">Furnished home, some walls (n = 3.0)</option>
+        <option value="3.5">Through walls / cluttered (n = 3.5)</option>
+        <option value="4.0">Heavy obstruction (n = 4.0)</option>
+      </select>
+      <div class="hint">Path-loss exponent. Radio fades faster through clutter &mdash; this is
+        the single biggest factor in distance accuracy.</div>
+    </div>
+
+    <div class="fld">
+      <label>Reference power at 1 m <span id="f-tx-v">&minus;59 dBm</span></label>
+      <input type="range" id="f-tx" min="-85" max="-40" step="1" value="-59">
+      <div class="hint">Calibrate: put a device exactly 1 m away, then drag until its
+        reading says 1.0 m. Most phones and tags sit near &minus;59.</div>
+    </div>
+
+    <h4>Direction finding</h4>
+    <div class="fld">
+      <label>Bearing memory <span id="f-tau-v">45 s</span></label>
+      <input type="range" id="f-tau" min="10" max="180" step="5" value="45">
+      <div class="hint">How long a sweep sample counts for. Shorter reacts faster when you
+        move; longer is steadier when you stand still.</div>
+    </div>
+
+    <div class="fld">
+      <label>Signal smoothing <span id="f-sm-v">Medium</span></label>
+      <input type="range" id="f-sm" min="1" max="5" step="1" value="3">
+      <div class="hint">Raw RSSI jitters &plusmn;10 dB. More smoothing = steadier numbers,
+        slower response.</div>
+    </div>
+
+    <h4>Display</h4>
+    <div class="fld">
+      <label>Radar orientation</label>
+      <div class="seg" id="f-orient">
+        <button data-v="head" class="on">Heading&#8209;up</button>
+        <button data-v="north">North&#8209;up</button>
+      </div>
+      <div class="hint">Heading-up rotates the map with you, so straight up on screen is
+        always the way you are facing.</div>
+    </div>
+
+    <div class="fld">
+      <label>Units</label>
+      <div class="seg" id="f-unit">
+        <button data-v="m" class="on">Meters</button>
+        <button data-v="ft">Feet</button>
+      </div>
+    </div>
+
+    <div class="tog-row" id="f-unnamed"><span>Show unnamed devices</span><i class="tog-track"></i></div>
+    <div class="tog-row" id="f-sim"><span>Demo mode (simulated devices)</span><i class="tog-track"></i></div>
+
+    <div style="margin-top:18px"><button class="btn btn-blue" style="width:100%" id="set-close">Done</button></div>
+  </div>
+</div>
+
+<!-- ── HELP ── -->
+<div class="sheet" id="sheet-help">
+  <div class="sheet-in">
+    <h3>How this works</h3>
+    <p>Two separate estimates, with very different reliability. Worth knowing which is which.</p>
+
+    <h4>Distance &mdash; rough but real</h4>
+    <p>Every Bluetooth advertisement arrives with an RSSI (received signal strength). Signal
+      falls off predictably with distance, so distance is inverted out of it:</p>
+    <p style="font-family:ui-monospace,Menlo,monospace;font-size:0.76rem;color:#90cdf4">
+      d = 10 ^ ((txPower &minus; RSSI) / (10 &times; n))</p>
+    <p>Expect roughly &plusmn;30&ndash;50% error. Bodies, walls, metal and even phone
+      orientation all move RSSI by 10 dB or more, which is a 2&times; swing in distance.
+      Treat it as <b>near / mid / far</b>, not a tape measure. The &plusmn; range under each
+      reading is the honest bound from live signal variance.</p>
+
+    <h4>Direction &mdash; needs you to turn around</h4>
+    <p>No phone can read bearing off a Bluetooth packet. True direction finding (BLE 5.1
+      AoA/AoD) needs an antenna array your phone does not expose to a browser.</p>
+    <p>So this uses <b>body shadowing</b> instead. Your torso blocks 2.4 GHz by 10&ndash;15 dB.
+      Turn slowly through a full circle: signal peaks when you are facing the device and
+      dips when your back is to it. RSSI is bucketed by compass heading, and the peak of
+      that circular pattern is the bearing.</p>
+    <ul>
+      <li>Hold the phone flat, screen up, out in front of your chest.</li>
+      <li>Turn a slow, full 360&deg; &mdash; about 10 seconds.</li>
+      <li>The arrow firms up as the sweep fills in. Confidence is shown live.</li>
+      <li>Walk a few steps and sweep again to confirm.</li>
+    </ul>
+    <p>It resolves direction to maybe &plusmn;30&deg; on a good sweep. Enough to tell you
+      which end of the room, not enough to point at a drawer.</p>
+
+    <h4>What you will not see</h4>
+    <p>Devices already paired and connected to something usually stop advertising, so they
+      go invisible. iPhones, AirTags and modern Android devices rotate their MAC address
+      every ~15 minutes for privacy, so a device may reappear as a stranger. Neither is
+      fixable from a browser.</p>
+
+    <h4>Browser support</h4>
+    <p>Continuous scanning of <i>all</i> nearby devices needs the Web Bluetooth Scanning API:</p>
+    <ul>
+      <li><b>Android Chrome</b> &mdash; works, after enabling
+        <code>chrome://flags/#enable-experimental-web-platform-features</code>, then
+        restarting Chrome.</li>
+      <li><b>Desktop Chrome / Edge</b> &mdash; same flag.</li>
+      <li><b>iOS Safari</b> &mdash; no Web Bluetooth at all, and Apple has not shipped it.
+        A third-party browser such as Bluefy supports it.</li>
+    </ul>
+    <p>Without the flag, the <b>Pick one device</b> fallback still works everywhere Web
+      Bluetooth exists &mdash; you choose a device from the system chooser and it gets tracked
+      individually. Demo mode in Settings runs the full radar on simulated devices, so you
+      can see the direction finding work on any browser.</p>
+
+    <div style="margin-top:18px"><button class="btn btn-blue" style="width:100%" id="help-close">Close</button></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   BLE Radar — distance + direction finding over Web Bluetooth
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Settings & persistence ─────────────────────────────────── */
+
+var CFG_KEY = 'ble_radar_cfg';
+var cfg = {
+  n: 2.5,            // path-loss exponent
+  tx: -59,           // reference RSSI at 1 m
+  tau: 45,           // bearing sample half-life, seconds
+  smooth: 3,         // 1..5
+  orient: 'head',    // 'head' | 'north'
+  unit: 'm',         // 'm' | 'ft'
+  unnamed: true,     // show devices with no name
+  sim: false         // demo mode
+};
+
+function cfgLoad() {
+  try {
+    var raw = localStorage.getItem(CFG_KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in o) if (k in cfg) cfg[k] = o[k]; }
+  } catch (e) {}
+}
+function cfgSave() {
+  try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+}
+
+/* ── Small math helpers ─────────────────────────────────────── */
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function clamp01(v) { return clamp(v, 0, 1); }
+function norm360(d) { d = d % 360; return d < 0 ? d + 360 : d; }
+function radians(d) { return d * Math.PI / 180; }
+
+/** Shortest signed angular difference a → b, in (-180, 180]. */
+function angDiff(a, b) {
+  var d = norm360(b - a);
+  return d > 180 ? d - 360 : d;
+}
+
+/* ── RSSI filter ────────────────────────────────────────────────
+   Raw RSSI is brutally noisy — ±10 dB frame to frame is normal.
+   A 1-D Kalman filter tracks the underlying level while keeping a
+   usable variance estimate, which we reuse for the ± distance band. */
+
+function RssiFilter() {
+  this.x = null;   // estimate
+  this.p = 100;    // estimate variance
+  this.varObs = 0; // running observation variance (for the ± band)
+  this.nObs = 0;
+}
+RssiFilter.prototype.push = function (z) {
+  // Process noise scales with smoothing setting: less smoothing = trust
+  // new readings more.
+  var q = [0, 1.6, 0.9, 0.5, 0.28, 0.15][cfg.smooth] || 0.5;
+  var r = 5;  // measurement noise, dB² — typical for BLE RSSI
+
+  if (this.x === null) { this.x = z; this.p = r; }
+  else {
+    this.p += q;
+    var k = this.p / (this.p + r);
+    this.x += k * (z - this.x);
+    this.p *= (1 - k);
+  }
+  // Welford-ish running variance of the residual, for the honest ± band.
+  var d = z - this.x;
+  this.nObs++;
+  this.varObs += (d * d - this.varObs) / Math.min(this.nObs, 40);
+  return this.x;
+};
+RssiFilter.prototype.sd = function () {
+  return Math.sqrt(Math.max(this.varObs, 1));
+};
+
+/* ── Distance from RSSI ─────────────────────────────────────────
+   Log-distance path loss:  d = 10 ^ ((txPower - rssi) / (10 · n))
+   Genuinely approximate — see the help sheet. */
+
+function rssiToDistance(rssi, txPower) {
+  var tx = (typeof txPower === 'number') ? txPower : cfg.tx;
+  return Math.pow(10, (tx - rssi) / (10 * cfg.n));
+}
+
+/* ── Bearing estimator ──────────────────────────────────────────
+   Bins RSSI by compass heading, then solves for the peak of the
+   resulting circular pattern.
+
+   Physical basis: the human body attenuates 2.4 GHz by 10–15 dB, so
+   as the user rotates, the device's signal peaks when they face it and
+   dips when their back is turned. The pattern is broad (roughly a
+   cardioid), so argmax is too noisy — instead we take the weighted
+   circular mean, which is the standard estimator for this shape, and
+   read confidence off the mean resultant length. */
+
+var NBINS = 36;             // 10° per bin
+var BIN_DEG = 360 / NBINS;
+
+function Bearing() {
+  this.val = new Float32Array(NBINS);   // smoothed RSSI in that bin
+  this.ts  = new Float64Array(NBINS);   // last update time, ms
+  this.hit = new Uint8Array(NBINS);     // has any data
+}
+
+Bearing.prototype.reset = function () {
+  this.val.fill(0); this.ts.fill(0); this.hit.fill(0);
+};
+
+Bearing.prototype.add = function (heading, rssi, now) {
+  var i = Math.floor(norm360(heading) / BIN_DEG) % NBINS;
+  if (!this.hit[i]) { this.val[i] = rssi; this.hit[i] = 1; }
+  else {
+    // Age-aware blend: a stale bin gets overwritten rather than averaged
+    // with a reading taken who-knows-where.
+    var age = (now - this.ts[i]) / 1000;
+    var a = clamp01(0.35 + 0.65 * (age / cfg.tau));
+    this.val[i] += a * (rssi - this.val[i]);
+  }
+  this.ts[i] = now;
+};
+
+/**
+ * Solve the current bin pattern for a bearing.
+ * Returns { bearing, confidence, coverage, contrast } or null.
+ */
+Bearing.prototype.solve = function (now) {
+  var w = new Float64Array(NBINS);   // recency weight per bin
+  var i, covered = 0;
+
+  for (i = 0; i < NBINS; i++) {
+    if (!this.hit[i]) continue;
+    // Exponential decay so old sweep data fades as the user walks around.
+    var age = (now - this.ts[i]) / 1000;
+    var rec = Math.exp(-age / cfg.tau);
+    if (rec < 0.05) continue;
+    w[i] = rec;
+    covered++;
+  }
+  if (covered < 12) return null;   // need a real arc before claiming anything
+
+  // Circular 5-tap smooth of the RSSI pattern (weights 1,2,3,2,1). The
+  // shadowing lobe is broad, so this kills bin noise without blurring it.
+  var sm = new Float64Array(NBINS);
+  var kern = [1, 2, 3, 2, 1];
+  for (i = 0; i < NBINS; i++) {
+    if (!w[i]) { sm[i] = NaN; continue; }
+    var acc = 0, wsum = 0;
+    for (var k = -2; k <= 2; k++) {
+      var j = (i + k + NBINS) % NBINS;
+      if (!w[j]) continue;
+      var kw = kern[k + 2] * w[j];
+      acc += this.val[j] * kw; wsum += kw;
+    }
+    sm[i] = wsum > 0 ? acc / wsum : NaN;
+  }
+
+  // Pattern floor/ceiling over the covered bins.
+  var lo = Infinity, hi = -Infinity;
+  for (i = 0; i < NBINS; i++) {
+    if (isNaN(sm[i])) continue;
+    if (sm[i] < lo) lo = sm[i];
+    if (sm[i] > hi) hi = sm[i];
+  }
+  var contrast = hi - lo;               // dB of shadowing depth
+  if (!isFinite(contrast) || contrast < 0.5) return null;
+
+  // ── Boundary-artifact guard ──
+  // If the user only swept part of the circle, the largest value in that arc
+  // will sit at its edge whenever the device actually lies in the unswept part.
+  // That is not a peak, it is where we stopped looking — and taken at face
+  // value it produces bearings that are confidently, wildly wrong. So require
+  // the maximum to be interior: real data on BOTH sides, falling away on both.
+  var pk = -1, pkv = -Infinity;
+  for (i = 0; i < NBINS; i++) {
+    if (!isNaN(sm[i]) && sm[i] > pkv) { pkv = sm[i]; pk = i; }
+  }
+  if (pk < 0) return null;
+
+  function flankDrop(dir) {
+    var best = -1;
+    for (var k = 2; k <= 5; k++) {           // 20°..50° out from the peak
+      var j = (pk + dir * k + NBINS * 2) % NBINS;
+      if (isNaN(sm[j])) break;               // ran off the end of the swept arc
+      best = Math.max(best, pkv - sm[j]);
+    }
+    return best;                              // -1 = no data on this side
+  }
+  var dropL = flankDrop(-1), dropR = flankDrop(1);
+  if (dropL < 0 || dropR < 0) return null;    // peak is on the edge — not a peak
+
+  // Both flanks must actually fall off. A flat shoulder means the true peak is
+  // probably still outside the swept arc.
+  var flankQ = clamp01(Math.min(dropL, dropR) / 3.5);
+  if (flankQ <= 0) return null;
+
+  // Weighted circular mean over the upper half of the lobe. Bins below the
+  // midpoint carry no weight — they are the shadowed side and only add noise.
+  var mid = lo + contrast * 0.5;
+  var sx = 0, sy = 0, sw = 0;
+  for (i = 0; i < NBINS; i++) {
+    if (isNaN(sm[i]) || sm[i] <= mid) continue;
+    var ww = (sm[i] - mid) * w[i];
+    var th = radians((i + 0.5) * BIN_DEG);
+    sx += ww * Math.sin(th);
+    sy += ww * Math.cos(th);
+    sw += ww;
+  }
+  if (sw <= 0) return null;
+
+  var bearing = norm360(Math.atan2(sx, sy) * 180 / Math.PI);
+  // Mean resultant length: 1 = perfectly concentrated, 0 = uniform.
+  var R = Math.sqrt(sx * sx + sy * sy) / sw;
+
+  // Confidence folds three independent things together: how much of the
+  // circle was actually swept, how deep the shadowing lobe is, and how
+  // tightly concentrated the peak is.
+  var conf = clamp01((covered / NBINS - 0.30) / 0.35) *
+             clamp01(contrast / 9) *
+             clamp01(R / 0.55) *
+             flankQ;
+
+  // How much signal the user's body is costing us at the heading they are
+  // facing right now — the peak of the pattern minus the value here.
+  var shadow = 0;
+  if (heading !== null) {
+    var hb = Math.floor(norm360(heading) / BIN_DEG) % NBINS;
+    if (!isNaN(sm[hb])) shadow = hi - sm[hb];
+  }
+
+  return {
+    bearing: bearing,
+    confidence: conf,
+    coverage: covered / NBINS,
+    contrast: contrast,
+    peak: hi,
+    shadow: shadow
+  };
+};
+
+/* ── Device model ───────────────────────────────────────────── */
+
+function Device(id) {
+  this.id = id;
+  this.name = null;
+  this.rssiRaw = -100;
+  this.filter = new RssiFilter();
+  this.rssi = -100;
+  this.txPower = null;
+  this.bearing = new Bearing();
+  this.solved = null;
+  this.first = 0;
+  this.last = 0;
+  this.count = 0;
+  this.vendor = null;
+  this.isTracker = false;
+  this.trend = 0;      // dB/s, positive = getting closer
+  this._prev = null;
+  this._prevT = 0;
+}
+
+Device.prototype.observe = function (rssi, now) {
+  this.rssiRaw = rssi;
+  var was = this.rssi;
+  this.rssi = this.filter.push(rssi);
+  if (!this.first) this.first = now;
+  this.last = now;
+  this.count++;
+
+  if (this._prev !== null && now > this._prevT) {
+    var dt = (now - this._prevT) / 1000;
+    if (dt > 0.4) {
+      var rate = (this.rssi - this._prev) / dt;
+      this.trend += 0.25 * (rate - this.trend);
+      this._prev = this.rssi; this._prevT = now;
+    }
+  } else { this._prev = this.rssi; this._prevT = now; }
+
+  // Bin the RAW value, not the filtered one. The Kalman filter lags by ~0.8 s,
+  // and while the user is turning that lag smears into a bearing bias of tens
+  // of degrees in the direction of rotation. Each bin does its own averaging,
+  // which is the correct place for it — samples are then only ever averaged
+  // with others taken at the same heading.
+  if (heading !== null) this.bearing.add(heading, rssi, now);
+  return was;
+};
+
+/**
+ * RSSI to feed the distance model, with body shadowing backed out.
+ *
+ * The user's own body attenuates the signal by up to ~13 dB depending on which
+ * way they face, which the naive model reads as "further away". Once a bearing
+ * pattern exists we know how much of a hit the current heading is taking — the
+ * gap between the pattern's peak and its value at the heading we are facing
+ * right now — and can add it back. Stays live: this corrects the current
+ * reading rather than substituting a stale peak.
+ */
+Device.prototype.rssiForDistance = function () {
+  var s = this.solved;
+  if (!s || s.confidence < 0.12 || typeof s.shadow !== 'number') return this.rssi;
+  var w = clamp01((s.confidence - 0.12) / 0.3);
+  return this.rssi + clamp(s.shadow, 0, 15) * w;
+};
+
+Device.prototype.distance = function () {
+  return rssiToDistance(this.rssiForDistance(), this.txPower);
+};
+
+/** Near/far bound from live signal variance — the honest ± band. */
+Device.prototype.distanceRange = function () {
+  var sd = clamp(this.filter.sd(), 1, 12);
+  var base = this.rssiForDistance();
+  return [
+    rssiToDistance(base + sd, this.txPower),
+    rssiToDistance(base - sd, this.txPower)
+  ];
+};
+
+Device.prototype.label = function () {
+  if (this.name) return this.name;
+  if (this.vendor) return this.vendor + ' device';
+  return 'Unknown · ' + String(this.id).slice(0, 6);
+};
+
+/* ── Vendor identification from manufacturer data ───────────── */
+
+var VENDORS = {
+  0x004C: 'Apple', 0x0075: 'Samsung', 0x00E0: 'Google', 0x0006: 'Microsoft',
+  0x000F: 'Broadcom', 0x0087: 'Garmin', 0x00D2: 'Bose', 0x0157: 'Xiaomi',
+  0x038F: 'Xiaomi', 0x0171: 'Amazon', 0x02E5: 'Tile', 0x0499: 'Ruuvi',
+  0x004F: 'Logitech', 0x0059: 'Nordic', 0x0001: 'Ericsson', 0x000A: 'Qualcomm'
+};
+
+function readVendor(dev, mfg) {
+  if (!mfg || typeof mfg.forEach !== 'function') return;
+  mfg.forEach(function (data, companyId) {
+    if (!dev.vendor && VENDORS[companyId]) dev.vendor = VENDORS[companyId];
+    // Apple advertisement type 0x12 is the Find My / offline-finding payload —
+    // AirTags and anything else in the Find My network.
+    if (companyId === 0x004C && data && data.byteLength >= 1) {
+      if (data.getUint8(0) === 0x12) dev.isTracker = true;
+    }
+    if (companyId === 0x02E5) dev.isTracker = true;  // Tile
+  });
+}
+
+/* ── Compass ─────────────────────────────────────────────────── */
+
+var heading = null;          // degrees, true/magnetic north = 0, clockwise
+var headingAbsolute = false;
+var compassOn = false;
+var headingSmooth = null;
+
+/**
+ * Tilt-compensated compass heading from device orientation Euler angles.
+ * Standard W3C-derived projection of the device's -Y axis onto the
+ * horizontal plane — works when the phone is held at an angle, not just flat.
+ */
+function headingFromEuler(alpha, beta, gamma) {
+  var dr = Math.PI / 180;
+  var x = (beta || 0) * dr, y = (gamma || 0) * dr, z = (alpha || 0) * dr;
+  var cX = Math.cos(x), cY = Math.cos(y), cZ = Math.cos(z);
+  var sX = Math.sin(x), sY = Math.sin(y), sZ = Math.sin(z);
+
+  var Vx = -cZ * sY - sZ * sX * cY;
+  var Vy = -sZ * sY + cZ * sX * cY;
+
+  var h = Math.atan2(Vx, Vy) * 180 / Math.PI;
+  return norm360(h);
+}
+
+function onOrientation(e) {
+  var h = null;
+  if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
+    h = e.webkitCompassHeading;              // iOS: already true heading
+    headingAbsolute = true;
+  } else if (e.alpha !== null && e.alpha !== undefined) {
+    h = headingFromEuler(e.alpha, e.beta, e.gamma);
+    if (e.absolute) headingAbsolute = true;
+  }
+  if (h === null) return;
+
+  // Correct for screen rotation so "up" on screen stays "up" in the world.
+  var sa = 0;
+  if (screen.orientation && typeof screen.orientation.angle === 'number') sa = screen.orientation.angle;
+  else if (typeof window.orientation === 'number') sa = window.orientation;
+  h = norm360(h + sa);
+
+  // Circular low-pass — averaging degrees naively breaks across the 0/360 seam.
+  if (headingSmooth === null) headingSmooth = h;
+  else headingSmooth = norm360(headingSmooth + 0.35 * angDiff(headingSmooth, h));
+
+  heading = headingSmooth;
+  compassOn = true;
+}
+
+function startCompass() {
+  var DOE = window.DeviceOrientationEvent;
+  if (!DOE) { showCompassBanner('none'); return; }
+
+  function attach() {
+    window.addEventListener('deviceorientationabsolute', onOrientation, true);
+    window.addEventListener('deviceorientation', onOrientation, true);
+    setTimeout(function () {
+      if (!compassOn) showCompassBanner('none');
+      else if (!headingAbsolute) showCompassBanner('relative');
+    }, 2500);
+  }
+
+  if (typeof DOE.requestPermission === 'function') {
+    // iOS 13+ requires an explicit gesture-bound grant.
+    DOE.requestPermission().then(function (res) {
+      if (res === 'granted') attach();
+      else showCompassBanner('denied');
+    })['catch'](function () { showCompassBanner('denied'); });
+  } else attach();
+}
+
+function showCompassBanner(kind) {
+  var el = document.getElementById('bn-compass');
+  el.classList.remove('hidden', 'bn-warn', 'bn-err', 'bn-info');
+  if (kind === 'denied') {
+    el.className = 'banner bn-err';
+    el.innerHTML = '<b>Compass blocked.</b> Direction finding needs motion &amp; ' +
+      'orientation access. Enable it for this site in your browser settings, then reload. ' +
+      'Distance still works without it.';
+  } else if (kind === 'none') {
+    el.className = 'banner bn-warn';
+    el.innerHTML = '<b>No compass detected.</b> This device reports no magnetometer, so ' +
+      'bearings cannot be computed. Distance and proximity still work.';
+  } else if (kind === 'relative') {
+    el.className = 'banner bn-warn';
+    el.innerHTML = '<b>Compass is relative, not absolute.</b> Headings drift over time. ' +
+      'Direction is still usable for a short sweep &mdash; treat it as relative to where ' +
+      'you started.';
+  }
+}
+
+/* ── Scanner ─────────────────────────────────────────────────── */
+
+var devices = {};     // id → Device
+var scanning = false;
+var scanMode = null;  // 'le' | 'watch' | 'sim'
+var scanHandle = null;
+var watched = [];
+
+function support() {
+  if (!navigator.bluetooth) return 'none';
+  if (typeof navigator.bluetooth.requestLEScan !== 'function') return 'partial';
+  return 'full';
+}
+
+function getDevice(id) {
+  var d = devices[id];
+  if (!d) { d = devices[id] = new Device(id); }
+  return d;
+}
+
+function onAdvertisement(ev) {
+  if (typeof ev.rssi !== 'number') return;
+  var now = Date.now();
+  var id = (ev.device && ev.device.id) || ev.name || 'unknown';
+  var d = getDevice(id);
+
+  var nm = (ev.device && ev.device.name) || ev.name;
+  if (nm) d.name = nm;
+  if (typeof ev.txPower === 'number') d.txPower = ev.txPower;
+  readVendor(d, ev.manufacturerData);
+
+  d.observe(ev.rssi, now);
+}
+
+function startScan() {
+  if (cfg.sim) { startSim(); return Promise.resolve(); }
+
+  var s = support();
+  if (s === 'none') {
+    banner('bn-support', 'bn-err',
+      '<b>Web Bluetooth is not available in this browser.</b> On iOS, Safari does not ' +
+      'support it at all. Turn on <b>Demo mode</b> in Settings to see the radar work, ' +
+      'or open this page in Chrome on Android.');
+    return Promise.resolve();
+  }
+
+  if (s === 'partial') {
+    // No requestLEScan — fall back to the device chooser. One device at a
+    // time, but it works on every browser that has Web Bluetooth at all.
+    return pickOneDevice();
+  }
+
+  navigator.bluetooth.addEventListener('advertisementreceived', onAdvertisement);
+  return navigator.bluetooth.requestLEScan({
+    acceptAllAdvertisements: true,
+    keepRepeatedDevices: true
+  }).then(function (h) {
+    scanHandle = h;
+    scanning = true; scanMode = 'le';
+    banner('bn-support', 'bn-ok',
+      '<b>Scanning all nearby devices.</b> Hold the phone flat and turn slowly through a ' +
+      'full circle to resolve directions.');
+    syncUI();
+  })['catch'](function (err) {
+    var msg = String(err && err.message || err);
+    if (/user|cancel/i.test(msg)) return;
+    banner('bn-support', 'bn-err',
+      '<b>Scan could not start.</b> ' + escapeHtml(msg) + '<br>' +
+      'Most often this means the scanning API is behind a flag: open ' +
+      '<code>chrome://flags/#enable-experimental-web-platform-features</code>, enable it, ' +
+      'restart Chrome, and make sure Bluetooth and Location are on.');
+    syncUI();
+  });
+}
+
+function pickOneDevice() {
+  return navigator.bluetooth.requestDevice({ acceptAllDevices: true })
+    .then(function (dev) {
+      if (typeof dev.watchAdvertisements !== 'function') {
+        throw new Error('This browser cannot watch advertisements.');
+      }
+      dev.addEventListener('advertisementreceived', onAdvertisement);
+      watched.push(dev);
+      return dev.watchAdvertisements().then(function () {
+        scanning = true; scanMode = 'watch';
+        banner('bn-support', 'bn-warn',
+          '<b>Single-device mode.</b> Your browser lacks the all-device scanning API, so ' +
+          'devices are tracked one at a time. Tap <b>Add device</b> to track another. ' +
+          'To scan everything at once, enable ' +
+          '<code>chrome://flags/#enable-experimental-web-platform-features</code>.');
+        syncUI();
+      });
+    })['catch'](function (err) {
+      var msg = String(err && err.message || err);
+      if (/user|cancel|chooser/i.test(msg)) return;
+      banner('bn-support', 'bn-err', '<b>Could not track device.</b> ' + escapeHtml(msg));
+      syncUI();
+    });
+}
+
+function stopScan() {
+  if (scanHandle) { try { scanHandle.stop(); } catch (e) {} scanHandle = null; }
+  try { navigator.bluetooth && navigator.bluetooth.removeEventListener &&
+        navigator.bluetooth.removeEventListener('advertisementreceived', onAdvertisement); } catch (e) {}
+  watched.forEach(function (d) {
+    try { d.removeEventListener('advertisementreceived', onAdvertisement); } catch (e) {}
+  });
+  watched = [];
+  stopSim();
+  scanning = false; scanMode = null;
+  syncUI();
+}
+
+/* ── Demo mode ───────────────────────────────────────────────────
+   Simulated devices at known bearings and distances, with the same
+   body-shadowing physics the estimator is designed to invert. Useful
+   for seeing the direction finder work on a browser without Web
+   Bluetooth, and for sanity-checking the estimator itself. */
+
+var SIM_SET = [
+  { id: 'sim-keys',    name: "Keys (Tile)",       bearing:  35, dist:  4.5, tracker: true,  vendor: 'Tile'  },
+  { id: 'sim-buds',    name: 'Earbuds',           bearing: 150, dist:  1.8, tracker: false, vendor: 'Apple' },
+  { id: 'sim-tv',      name: 'Living Room TV',    bearing: 265, dist: 11.0, tracker: false, vendor: 'Samsung' },
+  { id: 'sim-tag',     name: null,                bearing: 310, dist: 22.0, tracker: true,  vendor: 'Apple' },
+  { id: 'sim-watch',   name: 'Watch',             bearing:  95, dist:  0.9, tracker: false, vendor: 'Google' }
+];
+var simTimer = null, simPhase = 0;
+
+function startSim() {
+  stopSim();
+  scanning = true; scanMode = 'sim';
+  banner('bn-support', 'bn-info',
+    '<b>Demo mode.</b> These devices are simulated, with realistic signal noise and body ' +
+    'shadowing. Turn in a full circle (or drag the radar on desktop) and watch the ' +
+    'bearings resolve. Switch it off in Settings to scan for real.');
+
+  simTimer = setInterval(function () {
+    var now = Date.now();
+    simPhase += 0.05;
+    SIM_SET.forEach(function (s, idx) {
+      var d = getDevice(s.id);
+      d.name = s.name; d.vendor = s.vendor; d.isTracker = s.tracker;
+
+      // Slow drift so distances are not suspiciously static.
+      var dist = Math.max(0.4, s.dist * (1 + 0.06 * Math.sin(simPhase + idx)));
+
+      // Free-space term.
+      var rssi = cfg.tx - 10 * cfg.n * Math.log10(dist);
+
+      // Body shadowing: full strength facing the device, -13 dB with your
+      // back to it. This is exactly the effect the estimator inverts.
+      if (heading !== null) {
+        var rel = radians(angDiff(heading, s.bearing));
+        rssi -= 13 * (1 - Math.cos(rel)) / 2;
+      }
+
+      // Gaussian-ish noise via central limit — RSSI is genuinely this messy.
+      var noise = 0;
+      for (var i = 0; i < 4; i++) noise += Math.random();
+      rssi += (noise - 2) * 3.2;
+
+      d.observe(Math.round(rssi), now);
+    });
+  }, 220);
+  syncUI();
+}
+
+function stopSim() {
+  if (simTimer) { clearInterval(simTimer); simTimer = null; }
+}
+
+/* ── Formatting ─────────────────────────────────────────────── */
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+function fmtDist(m, precise) {
+  if (!isFinite(m)) return '—';
+  if (cfg.unit === 'ft') {
+    var ft = m * 3.28084;
+    if (ft < 10) return ft.toFixed(1) + ' ft';
+    return Math.round(ft) + ' ft';
+  }
+  if (m < 10) return m.toFixed(precise ? 2 : 1) + ' m';
+  return Math.round(m) + ' m';
+}
+
+function fmtDistNum(m) {
+  if (!isFinite(m)) return '—';
+  var v = cfg.unit === 'ft' ? m * 3.28084 : m;
+  return v < 10 ? v.toFixed(1) : String(Math.round(v));
+}
+
+function unitLabel() { return cfg.unit === 'ft' ? 'ft' : 'm'; }
+
+function compassPoint(deg) {
+  var pts = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return pts[Math.round(norm360(deg) / 22.5) % 16];
+}
+
+function signalColor(rssi) {
+  // -50 excellent → -95 barely there
+  var t = clamp01((rssi + 95) / 45);
+  if (t > 0.66) return '#48bb78';
+  if (t > 0.4)  return '#ecc94b';
+  if (t > 0.2)  return '#ed8936';
+  return '#e53e3e';
+}
+
+/* ── Device list ─────────────────────────────────────────────── */
+
+var STALE_MS = 12000;   // no advert in this long → greyed out
+var DROP_MS  = 45000;   // ...and this long → removed
+
+var selectedId = null;
+
+function activeDevices() {
+  var now = Date.now(), out = [];
+  for (var id in devices) {
+    var d = devices[id];
+    if (now - d.last > DROP_MS) { delete devices[id]; continue; }
+    if (!cfg.unnamed && !d.name) continue;
+    d.solved = d.bearing.solve(now);
+    out.push(d);
+  }
+  out.sort(function (a, b) { return b.rssi - a.rssi; });
+  return out;
+}
+
+function renderList(list) {
+  var el = document.getElementById('list');
+  var now = Date.now();
+
+  if (!list.length) {
+    var msg;
+    if (!scanning) msg = 'Not scanning.<br>Tap <b>Start scan</b> to begin.';
+    else msg = 'Listening…<br>Nothing has advertised yet.';
+    el.innerHTML = '<div class="empty">' + msg + '</div>';
+    return;
+  }
+
+  var html = '';
+  list.forEach(function (d) {
+    var dist = d.distance();
+    var rng = d.distanceRange();
+    var stale = (now - d.last) > STALE_MS;
+    var col = signalColor(d.rssi);
+    var pct = clamp01((d.rssi + 95) / 45) * 100;
+
+    var bearingTxt;
+    if (d.solved && d.solved.confidence > 0.15) {
+      bearingTxt = compassPoint(d.solved.bearing) + ' · ' +
+                   Math.round(d.solved.bearing) + '° · ' +
+                   Math.round(d.solved.confidence * 100) + '%';
+    } else if (heading === null) {
+      bearingTxt = 'no compass';
+    } else {
+      bearingTxt = 'turn to locate';
+    }
+
+    var trendTxt = '';
+    if (Math.abs(d.trend) > 0.35) {
+      trendTxt = d.trend > 0
+        ? '<span style="color:#48bb78">▲ closer</span>'
+        : '<span style="color:#ed8936">▼ further</span>';
+    }
+
+    html +=
+      '<div class="dev' + (d.id === selectedId ? ' sel' : '') + (stale ? ' stale' : '') +
+        '" data-id="' + escapeHtml(d.id) + '">' +
+        '<div class="dev-top">' +
+          '<i class="dev-dot" style="background:' + col + '"></i>' +
+          '<span class="dev-name">' + escapeHtml(d.label()) + '</span>' +
+          (d.isTracker ? '<span class="tag find">TRACKER</span>' : '') +
+          '<span class="dev-dist">' + fmtDist(dist) + '</span>' +
+        '</div>' +
+        '<div class="dev-sub">' +
+          '<span>' + Math.round(d.rssi) + ' dBm</span>' +
+          '<span>' + bearingTxt + '</span>' +
+          '<span class="sp"></span>' +
+          trendTxt +
+          '<span>' + fmtDist(rng[0]) + '–' + fmtDist(rng[1]) + '</span>' +
+        '</div>' +
+        '<div class="bar"><i style="width:' + pct.toFixed(0) + '%;background:' + col + '"></i></div>' +
+      '</div>';
+  });
+  el.innerHTML = html;
+}
+
+/* ── Radar ───────────────────────────────────────────────────── */
+
+var radar = document.getElementById('radar');
+var rctx = radar.getContext('2d');
+var radarSize = 0;
+var dragHeading = 0;     // desktop: drag the radar to fake a compass in demo mode
+
+function sizeCanvas(cv, ctx) {
+  var dpr = window.devicePixelRatio || 1;
+  var w = cv.clientWidth;
+  if (!w) return 0;
+  var h = w;
+  cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return w;
+}
+
+/** Pick a max range that comfortably contains everything on screen. */
+function pickRange(list) {
+  var maxD = 4;
+  list.forEach(function (d) {
+    var v = d.distance();
+    if (isFinite(v) && v > maxD) maxD = v;
+  });
+  var steps = [4, 8, 15, 25, 40, 60, 100, 150];
+  for (var i = 0; i < steps.length; i++) if (maxD <= steps[i] * 0.92) return steps[i];
+  return steps[steps.length - 1];
+}
+
+/** Compress the radial scale — near devices would otherwise all pile at the centre. */
+function radialScale(dist, maxRange, R) {
+  var t = clamp01(dist / maxRange);
+  return Math.pow(t, 0.62) * R;
+}
+
+function drawRadar(list) {
+  var w = radarSize;
+  if (!w) return;
+  var c = w / 2, R = w / 2 - 16;
+
+  rctx.clearRect(0, 0, w, w);
+
+  var maxRange = pickRange(list);
+  var up = (cfg.orient === 'head' && heading !== null) ? heading : 0;
+
+  // ── rings ──
+  rctx.strokeStyle = '#2a3550';
+  rctx.fillStyle = '#151c2e';
+  rctx.beginPath(); rctx.arc(c, c, R, 0, Math.PI * 2); rctx.fill();
+
+  var ringVals = [0.25, 0.5, 0.75, 1];
+  ringVals.forEach(function (f) {
+    var rr = radialScale(maxRange * f, maxRange, R);
+    rctx.beginPath(); rctx.arc(c, c, rr, 0, Math.PI * 2);
+    rctx.lineWidth = (f === 1) ? 1.6 : 1;
+    rctx.strokeStyle = (f === 1) ? '#3a4560' : '#242e47';
+    rctx.stroke();
+
+    // Range labels ride the NE diagonal — the one spoke with no cardinal
+    // letter and no heading wedge to collide with.
+    var lx = c + rr * 0.707, ly = c - rr * 0.707;
+    rctx.fillStyle = '#5a6a88';
+    rctx.font = '600 10px -apple-system,system-ui,sans-serif';
+    rctx.textAlign = 'center'; rctx.textBaseline = 'middle';
+    rctx.fillText(fmtDist(maxRange * f), lx, ly);
+  });
+
+  // ── cross hairs ──
+  rctx.strokeStyle = '#242e47'; rctx.lineWidth = 1;
+  rctx.beginPath();
+  rctx.moveTo(c - R, c); rctx.lineTo(c + R, c);
+  rctx.moveTo(c, c - R); rctx.lineTo(c, c + R);
+  rctx.stroke();
+
+  // ── cardinal letters (rotate with the map) ──
+  var cards = [['N', 0], ['E', 90], ['S', 180], ['W', 270]];
+  rctx.font = '800 12px -apple-system,system-ui,sans-serif';
+  rctx.textAlign = 'center'; rctx.textBaseline = 'middle';
+  cards.forEach(function (cd) {
+    var scr = radians(norm360(cd[1] - up));
+    var rr = R + 8;
+    var x = c + Math.sin(scr) * rr, y = c - Math.cos(scr) * rr;
+    rctx.fillStyle = (cd[0] === 'N') ? '#e53e3e' : '#4a5a78';
+    rctx.fillText(cd[0], x, y);
+  });
+
+  // ── "you" wedge: which way the phone is pointing ──
+  if (heading !== null) {
+    var fwd = radians(norm360(heading - up));
+    rctx.save();
+    rctx.translate(c, c); rctx.rotate(fwd);
+    var g = rctx.createLinearGradient(0, 0, 0, -R);
+    g.addColorStop(0, 'rgba(102,126,234,0.30)');
+    g.addColorStop(1, 'rgba(102,126,234,0)');
+    rctx.fillStyle = g;
+    rctx.beginPath(); rctx.moveTo(0, 0);
+    rctx.arc(0, 0, R, -Math.PI / 2 - 0.30, -Math.PI / 2 + 0.30);
+    rctx.closePath(); rctx.fill();
+    rctx.restore();
+  }
+
+  // ── devices ──
+  list.forEach(function (d) {
+    var dist = d.distance();
+    if (!isFinite(dist)) return;
+    var rr = radialScale(dist, maxRange, R);
+    var col = signalColor(d.rssi);
+    var sel = d.id === selectedId;
+    var known = d.solved && d.solved.confidence > 0.15;
+
+    if (known) {
+      var scr = radians(norm360(d.solved.bearing - up));
+      var x = c + Math.sin(scr) * rr, y = c - Math.cos(scr) * rr;
+
+      // Uncertainty wedge — wider when confidence is low. Showing the spread
+      // matters more than showing a crisp dot that would be a lie.
+      var spread = radians(12 + (1 - d.solved.confidence) * 55);
+      rctx.save();
+      rctx.translate(c, c); rctx.rotate(scr);
+      rctx.fillStyle = sel ? 'rgba(102,126,234,0.22)' : 'rgba(136,152,184,0.10)';
+      rctx.beginPath(); rctx.moveTo(0, 0);
+      rctx.arc(0, 0, rr + 12, -Math.PI / 2 - spread, -Math.PI / 2 + spread);
+      rctx.closePath(); rctx.fill();
+      rctx.restore();
+
+      rctx.beginPath();
+      rctx.arc(x, y, sel ? 8 : 5.5, 0, Math.PI * 2);
+      rctx.fillStyle = col; rctx.fill();
+      if (sel) {
+        rctx.strokeStyle = '#fff'; rctx.lineWidth = 2; rctx.stroke();
+      }
+
+      if (sel || list.length <= 8) {
+        rctx.fillStyle = sel ? '#e8edf5' : '#8898b8';
+        rctx.font = (sel ? '800 ' : '600 ') + '10px -apple-system,system-ui,sans-serif';
+        rctx.textAlign = 'center'; rctx.textBaseline = 'bottom';
+        var nm = d.label();
+        if (nm.length > 14) nm = nm.slice(0, 13) + '…';
+        rctx.fillText(nm, x, y - (sel ? 12 : 9));
+      }
+    } else {
+      // Bearing unknown → the honest depiction is a full ring at the right
+      // radius, not a dot at an invented angle.
+      rctx.beginPath(); rctx.arc(c, c, rr, 0, Math.PI * 2);
+      rctx.strokeStyle = sel ? 'rgba(102,126,234,0.85)' : 'rgba(136,152,184,0.28)';
+      rctx.lineWidth = sel ? 2 : 1;
+      rctx.setLineDash([4, 5]);
+      rctx.stroke();
+      rctx.setLineDash([]);
+    }
+  });
+
+  // ── centre: you ──
+  rctx.beginPath(); rctx.arc(c, c, 6, 0, Math.PI * 2);
+  rctx.fillStyle = '#667eea'; rctx.fill();
+  rctx.strokeStyle = '#0f1623'; rctx.lineWidth = 2; rctx.stroke();
+
+  // ── hint line ──
+  var hint = '';
+  if (!scanning) hint = '';
+  else if (heading === null) hint = 'No compass — range only';
+  else {
+    var need = list.filter(function (d) { return !d.solved || d.solved.confidence <= 0.15; }).length;
+    hint = need ? 'Turn slowly in a full circle to resolve directions' :
+                  (cfg.orient === 'head' ? 'Heading-up' : 'North-up');
+  }
+  document.getElementById('radar-hint').textContent = hint;
+}
+
+/* ── Hunt mode ───────────────────────────────────────────────── */
+
+var arrowCv = document.getElementById('arrow');
+var actx = arrowCv.getContext('2d');
+var arrowSize = 0;
+var huntId = null;
+var soundOn = false;
+var lastBeep = 0;
+var audio = null;
+
+function openHunt(id) {
+  huntId = id;
+  selectedId = id;
+  document.getElementById('hunt').classList.add('on');
+  arrowSize = sizeCanvas(arrowCv, actx);
+}
+function closeHunt() {
+  huntId = null;
+  document.getElementById('hunt').classList.remove('on');
+}
+
+function drawArrow(dev) {
+  var w = arrowSize;
+  if (!w) { arrowSize = sizeCanvas(arrowCv, actx); w = arrowSize; if (!w) return; }
+  var c = w / 2, R = w / 2 - 10;
+  actx.clearRect(0, 0, w, w);
+
+  var solved = dev && dev.solved;
+  var conf = solved ? solved.confidence : 0;
+
+  // dial
+  actx.beginPath(); actx.arc(c, c, R, 0, Math.PI * 2);
+  actx.fillStyle = '#151c2e'; actx.fill();
+  actx.strokeStyle = '#2a3550'; actx.lineWidth = 2; actx.stroke();
+
+  // sweep coverage arc — shows how much of the circle has been sampled
+  if (dev) {
+    var now = Date.now();
+    for (var i = 0; i < NBINS; i++) {
+      if (!dev.bearing.hit[i]) continue;
+      var age = (now - dev.bearing.ts[i]) / 1000;
+      var rec = Math.exp(-age / cfg.tau);
+      if (rec < 0.05) continue;
+      var a0 = radians(norm360(i * BIN_DEG - (heading || 0))) - Math.PI / 2;
+      actx.beginPath();
+      actx.arc(c, c, R - 4, a0, a0 + radians(BIN_DEG) * 0.92);
+      actx.strokeStyle = 'rgba(102,126,234,' + (0.15 + rec * 0.6).toFixed(2) + ')';
+      actx.lineWidth = 5; actx.stroke();
+    }
+  }
+
+  if (!solved || conf <= 0.12) {
+    // No trustworthy bearing yet — say so rather than point somewhere.
+    actx.fillStyle = '#4a5a78';
+    actx.font = '800 15px -apple-system,system-ui,sans-serif';
+    actx.textAlign = 'center'; actx.textBaseline = 'middle';
+    actx.fillText(heading === null ? 'No compass' : 'Turn around', c, c - 8);
+    actx.font = '600 12px -apple-system,system-ui,sans-serif';
+    actx.fillText(heading === null ? 'distance only' : 'to find the bearing', c, c + 12);
+    return;
+  }
+
+  // Relative bearing: where the device is with respect to where you face.
+  var rel = radians(norm360(solved.bearing - (heading || 0)));
+
+  // uncertainty wedge
+  var spread = radians(12 + (1 - conf) * 55);
+  actx.save();
+  actx.translate(c, c); actx.rotate(rel);
+  actx.fillStyle = 'rgba(102,126,234,0.14)';
+  actx.beginPath(); actx.moveTo(0, 0);
+  actx.arc(0, 0, R - 6, -Math.PI / 2 - spread, -Math.PI / 2 + spread);
+  actx.closePath(); actx.fill();
+
+  // arrow
+  var len = R * 0.72, hw = R * 0.20;
+  var col = conf > 0.5 ? '#48bb78' : conf > 0.28 ? '#ecc94b' : '#ed8936';
+  actx.fillStyle = col;
+  actx.beginPath();
+  actx.moveTo(0, -len);
+  actx.lineTo(hw, -len + hw * 1.25);
+  actx.lineTo(hw * 0.38, -len + hw * 1.25);
+  actx.lineTo(hw * 0.38, len * 0.55);
+  actx.lineTo(-hw * 0.38, len * 0.55);
+  actx.lineTo(-hw * 0.38, -len + hw * 1.25);
+  actx.lineTo(-hw, -len + hw * 1.25);
+  actx.closePath();
+  actx.fill();
+  actx.restore();
+
+  // confidence readout
+  actx.fillStyle = '#8898b8';
+  actx.font = '700 11px -apple-system,system-ui,sans-serif';
+  actx.textAlign = 'center'; actx.textBaseline = 'middle';
+  actx.fillText(Math.round(conf * 100) + '% confidence · ' +
+                compassPoint(solved.bearing), c, c + R * 0.62);
+}
+
+function updateHunt() {
+  var dev = devices[huntId];
+  if (!dev) {
+    document.getElementById('hunt-dist').innerHTML = '&mdash;';
+    document.getElementById('hunt-msg').textContent = 'Lost signal from this device.';
+    drawArrow(null);
+    return;
+  }
+
+  document.getElementById('hunt-name').textContent = dev.label();
+  document.getElementById('hunt-id').textContent =
+    Math.round(dev.rssi) + ' dBm · ' + dev.count + ' packets' +
+    (dev.vendor ? ' · ' + dev.vendor : '');
+
+  var dist = dev.distance();
+  var rng = dev.distanceRange();
+  document.getElementById('hunt-dist').innerHTML =
+    fmtDistNum(dist) + '<small> ' + unitLabel() + '</small>';
+  document.getElementById('hunt-range').textContent =
+    'likely ' + fmtDist(rng[0]) + ' – ' + fmtDist(rng[1]);
+
+  // Proximity meter: full at touching, empty at ~25 m.
+  var prox = clamp01(1 - Math.log10(clamp(dist, 0.3, 30) / 0.3) / Math.log10(100));
+  var mcol = prox > 0.66 ? '#48bb78' : prox > 0.33 ? '#ecc94b' : '#ed8936';
+  var mi = document.querySelector('#hunt-meter > i');
+  mi.style.width = (prox * 100).toFixed(0) + '%';
+  mi.style.background = mcol;
+
+  drawArrow(dev);
+
+  // Guidance
+  var msg;
+  var solved = dev.solved;
+  if (heading === null) {
+    msg = 'No compass on this device — use the distance and the closer/further ' +
+          'readout to home in.';
+  } else if (!solved || solved.confidence <= 0.12) {
+    var cov = solved ? Math.round(solved.coverage * 100) : 0;
+    msg = 'Hold the phone flat and turn slowly through a full circle. ' +
+          'Swept ' + cov + '% so far.';
+  } else if (solved.confidence < 0.35) {
+    msg = 'Rough bearing — keep turning, or walk a few steps and sweep again.';
+  } else {
+    var rel = angDiff(heading, solved.bearing);
+    if (Math.abs(rel) < 22) {
+      msg = dist < 1.5 ? 'Right in front of you — it is within arm’s reach.'
+                       : 'Facing it. Walk forward and watch the distance drop.';
+    } else if (Math.abs(rel) > 150) {
+      msg = 'It is behind you — turn around.';
+    } else {
+      msg = 'Turn ' + Math.round(Math.abs(rel)) + '° to your ' +
+            (rel > 0 ? 'right' : 'left') + '.';
+    }
+    if (dev.trend > 0.4) msg += ' Getting warmer.';
+    else if (dev.trend < -0.4) msg += ' Getting colder.';
+  }
+  document.getElementById('hunt-msg').textContent = msg;
+
+  if (soundOn) proximityBeep(prox);
+}
+
+function proximityBeep(prox) {
+  var now = Date.now();
+  // Interval collapses from 1.4 s at range to 120 ms right on top of it.
+  var gap = 1400 - prox * 1280;
+  if (now - lastBeep < gap) return;
+  lastBeep = now;
+
+  try {
+    if (!audio) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audio = new AC();
+    }
+    if (audio.state === 'suspended') audio.resume();
+    var o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sine';
+    o.frequency.value = 480 + prox * 900;
+    g.gain.setValueAtTime(0.0001, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.16, audio.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.09);
+    o.connect(g); g.connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + 0.1);
+  } catch (e) {}
+
+  if (navigator.vibrate && prox > 0.55) {
+    try { navigator.vibrate(Math.round(12 + prox * 28)); } catch (e) {}
+  }
+}
+
+/* ── Main loop ───────────────────────────────────────────────── */
+
+function tick() {
+  var list = activeDevices();
+
+  renderList(list);
+  drawRadar(list);
+
+  document.getElementById('s-count').textContent = String(list.length);
+
+  var hEl = document.getElementById('s-head');
+  if (heading === null) { hEl.textContent = '—'; hEl.className = 'val dim'; }
+  else {
+    hEl.textContent = Math.round(heading) + '° ' + compassPoint(heading);
+    hEl.className = 'val';
+  }
+
+  var nEl = document.getElementById('s-near');
+  if (!list.length) { nEl.textContent = '—'; nEl.className = 'val dim'; }
+  else {
+    var near = list[0];
+    for (var i = 1; i < list.length; i++) if (list[i].distance() < near.distance()) near = list[i];
+    nEl.textContent = fmtDist(near.distance());
+    nEl.className = 'val';
+  }
+
+  var trackers = list.filter(function (d) { return d.isTracker; }).length;
+  document.getElementById('list-sub').textContent =
+    trackers ? trackers + ' tracker' + (trackers > 1 ? 's' : '') : '';
+
+  if (huntId) updateHunt();
+}
+
+/* ── UI wiring ───────────────────────────────────────────────── */
+
+function banner(id, cls, html) {
+  var el = document.getElementById(id);
+  el.className = 'banner ' + cls;
+  el.innerHTML = html;
+}
+
+function syncUI() {
+  var b = document.getElementById('btn-scan');
+  if (scanning) {
+    if (scanMode === 'watch') {
+      b.textContent = 'Add device';
+      b.className = 'btn btn-green btn-grow';
+    } else {
+      b.textContent = 'Stop scan';
+      b.className = 'btn btn-red btn-grow';
+    }
+  } else {
+    b.textContent = cfg.sim ? 'Start demo' : 'Start scan';
+    b.className = 'btn btn-blue btn-grow';
+  }
+  document.getElementById('list-title').textContent =
+    scanMode === 'sim' ? 'Simulated devices' : 'Nearby devices';
+}
+
+document.getElementById('btn-scan').addEventListener('click', function () {
+  if (scanning && scanMode === 'watch') { pickOneDevice(); return; }
+  if (scanning) { stopScan(); return; }
+  startCompass();
+  startScan();
+});
+
+document.getElementById('list').addEventListener('click', function (e) {
+  var row = e.target.closest ? e.target.closest('.dev') : null;
+  if (!row) return;
+  var id = row.getAttribute('data-id');
+  selectedId = (selectedId === id) ? null : id;
+  if (selectedId) openHunt(selectedId);
+  tick();
+});
+
+document.getElementById('hunt-close').addEventListener('click', closeHunt);
+
+document.getElementById('hunt-reset').addEventListener('click', function () {
+  var d = devices[huntId];
+  if (d) { d.bearing.reset(); d.solved = null; }
+});
+
+document.getElementById('hunt-sound').addEventListener('click', function () {
+  soundOn = !soundOn;
+  this.textContent = 'Sound: ' + (soundOn ? 'on' : 'off');
+  this.className = 'btn ' + (soundOn ? 'btn-green' : 'btn-gray');
+  if (soundOn) proximityBeep(0.5);   // unlock audio on the gesture
+});
+
+/* sheets */
+function sheet(id, on) { document.getElementById(id).classList[on ? 'add' : 'remove']('on'); }
+document.getElementById('btn-set').addEventListener('click', function () { sheet('sheet-set', true); });
+document.getElementById('set-close').addEventListener('click', function () { sheet('sheet-set', false); });
+document.getElementById('btn-help').addEventListener('click', function () { sheet('sheet-help', true); });
+document.getElementById('help-close').addEventListener('click', function () { sheet('sheet-help', false); });
+['sheet-set', 'sheet-help'].forEach(function (id) {
+  document.getElementById(id).addEventListener('click', function (e) {
+    if (e.target === this) sheet(id, false);
+  });
+});
+
+/* settings controls */
+var fEnv = document.getElementById('f-env');
+fEnv.addEventListener('change', function () { cfg.n = parseFloat(this.value); cfgSave(); });
+
+var fTx = document.getElementById('f-tx');
+fTx.addEventListener('input', function () {
+  cfg.tx = parseInt(this.value, 10);
+  document.getElementById('f-tx-v').textContent = cfg.tx + ' dBm';
+  cfgSave();
+});
+
+var fTau = document.getElementById('f-tau');
+fTau.addEventListener('input', function () {
+  cfg.tau = parseInt(this.value, 10);
+  document.getElementById('f-tau-v').textContent = cfg.tau + ' s';
+  cfgSave();
+});
+
+var SMOOTH_NAMES = ['', 'Minimal', 'Light', 'Medium', 'Heavy', 'Maximum'];
+var fSm = document.getElementById('f-sm');
+fSm.addEventListener('input', function () {
+  cfg.smooth = parseInt(this.value, 10);
+  document.getElementById('f-sm-v').textContent = SMOOTH_NAMES[cfg.smooth];
+  cfgSave();
+});
+
+function segWire(id, key) {
+  var el = document.getElementById(id);
+  el.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) return;
+    cfg[key] = b.getAttribute('data-v');
+    Array.prototype.forEach.call(el.querySelectorAll('button'), function (x) {
+      x.classList.toggle('on', x === b);
+    });
+    cfgSave();
+  });
+}
+segWire('f-orient', 'orient');
+segWire('f-unit', 'unit');
+
+function togWire(id, key, after) {
+  var el = document.getElementById(id);
+  el.addEventListener('click', function () {
+    cfg[key] = !cfg[key];
+    el.classList.toggle('on', cfg[key]);
+    cfgSave();
+    if (after) after();
+  });
+}
+togWire('f-unnamed', 'unnamed');
+togWire('f-sim', 'sim', function () {
+  // Switching modes tears down whatever is running and clears the board.
+  var wasScanning = scanning;
+  stopScan();
+  devices = {}; selectedId = null; closeHunt();
+  document.getElementById('bn-support').className = 'banner hidden';
+  if (wasScanning) { startCompass(); startScan(); }
+  syncUI();
+});
+
+/* desktop: drag the radar to simulate turning, so demo mode is usable
+   without a magnetometer */
+(function () {
+  var dragging = false, lastX = 0;
+  function down(x) {
+    if (compassOn) return;
+    dragging = true; lastX = x;
+    if (heading === null) heading = 0;
+  }
+  function move(x) {
+    if (!dragging) return;
+    heading = norm360(heading + (x - lastX) * 0.6);
+    lastX = x;
+  }
+  function up() { dragging = false; }
+
+  radar.addEventListener('mousedown', function (e) { down(e.clientX); });
+  window.addEventListener('mousemove', function (e) { move(e.clientX); });
+  window.addEventListener('mouseup', up);
+  radar.addEventListener('touchstart', function (e) {
+    if (compassOn) return;
+    down(e.touches[0].clientX);
+  }, { passive: true });
+  radar.addEventListener('touchmove', function (e) {
+    if (!dragging) return;
+    move(e.touches[0].clientX);
+  }, { passive: true });
+  radar.addEventListener('touchend', up);
+})();
+
+/* ── Boot ────────────────────────────────────────────────────── */
+
+function applyCfgToUI() {
+  fEnv.value = String(cfg.n.toFixed(1));
+  fTx.value = cfg.tx;
+  document.getElementById('f-tx-v').textContent = cfg.tx + ' dBm';
+  fTau.value = cfg.tau;
+  document.getElementById('f-tau-v').textContent = cfg.tau + ' s';
+  fSm.value = cfg.smooth;
+  document.getElementById('f-sm-v').textContent = SMOOTH_NAMES[cfg.smooth];
+
+  [['f-orient', cfg.orient], ['f-unit', cfg.unit]].forEach(function (p) {
+    Array.prototype.forEach.call(
+      document.getElementById(p[0]).querySelectorAll('button'),
+      function (b) { b.classList.toggle('on', b.getAttribute('data-v') === p[1]); });
+  });
+  document.getElementById('f-unnamed').classList.toggle('on', cfg.unnamed);
+  document.getElementById('f-sim').classList.toggle('on', cfg.sim);
+}
+
+function resize() {
+  radarSize = sizeCanvas(radar, rctx);
+  if (huntId) arrowSize = sizeCanvas(arrowCv, actx);
+}
+
+cfgLoad();
+applyCfgToUI();
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', function () { setTimeout(resize, 250); });
+
+/* Up-front support notice, before anything is tapped. */
+(function () {
+  var s = support();
+  if (!window.isSecureContext) {
+    banner('bn-support', 'bn-err',
+      '<b>Insecure page.</b> Web Bluetooth only works over HTTPS (or localhost). ' +
+      'Open this page over https:// .');
+  } else if (s === 'none') {
+    banner('bn-support', 'bn-warn',
+      '<b>No Web Bluetooth in this browser.</b> iOS Safari does not support it. ' +
+      'Use Chrome on Android, or turn on <b>Demo mode</b> in Settings to see how the ' +
+      'radar behaves.');
+  } else if (s === 'partial') {
+    banner('bn-support', 'bn-warn',
+      '<b>Limited support.</b> This browser can track devices one at a time but cannot ' +
+      'scan for all of them. For a full scan enable ' +
+      '<code>chrome://flags/#enable-experimental-web-platform-features</code> and restart.');
+  }
+})();
+
+syncUI();
+setInterval(tick, 100);
+tick();
+</script>
+</body>
+</html>
